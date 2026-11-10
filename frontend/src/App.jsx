@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import './App.css'
 
 function daysLeft(dueDate) {
   const today = new Date()
@@ -10,6 +11,12 @@ function getColor(days) {
   if (days < 0) return 'red'
   if (days <= 7) return 'orange'
   return 'green'
+}
+
+function getStatus(days) {
+  if (days < 0) return 'Late'
+  if (days <= 7) return 'Due soon'
+  return 'OK'
 }
 
 function formatDate(date) {
@@ -159,82 +166,144 @@ function App() {
   }
 
   return (
-    <div>
+    <div className="container">
       <h1>Gym App</h1>
 
-      <h2>Add Member</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />{' '}
-        <input
-          placeholder="Phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />{' '}
-        <select
-          value={packageId}
-          onChange={(e) => setPackageId(e.target.value)}
-        >
-          {packages.map((p) => (
-            <option key={p._id} value={p._id}>
-              {p.name} - Rs {p.fee}
-            </option>
-          ))}
-        </select>{' '}
-        <button type="submit">Add Member</button>
-      </form>
-      <p>{message}</p>
+      <div className="card">
+        <h2>Add Member</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            placeholder="Phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <select
+            value={packageId}
+            onChange={(e) => setPackageId(e.target.value)}
+          >
+            {packages.map((p) => (
+              <option key={p._id} value={p._id}>
+                {p.name} - Rs {p.fee}
+              </option>
+            ))}
+          </select>
+          <button type="submit">Add Member</button>
+        </form>
+        <p>{message}</p>
+      </div>
 
-      <h2>Members</h2>
-      {members.map((m) => {
-        const days = daysLeft(m.nextDueDate)
-        return (
-          <p key={m._id} style={{ color: getColor(days) }}>
-            {m.name} - {m.packageName} - Rs {m.fee} - Due:{' '}
-            {formatDate(m.nextDueDate)} - {days} days left{' '}
-            <button onClick={() => handleSendReminder(m)}>Send reminder</button>{' '}
-            <button onClick={() => handleMarkPaid(m._id, m.name)}>
-              Mark as paid
-            </button>{' '}
-            <button onClick={() => handleDeleteMember(m._id, m.name)}>
-              Delete
-            </button>
-          </p>
-        )
-      })}
+      <div className="card">
+        <h2>Members</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Package</th>
+                <th>Fee</th>
+                <th>Due date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => {
+                const days = daysLeft(m.nextDueDate)
+                return (
+                  <tr key={m._id}>
+                    <td>{m.name}</td>
+                    <td>{m.phone}</td>
+                    <td>{m.packageName}</td>
+                    <td>Rs {m.fee}</td>
+                    <td>{formatDate(m.nextDueDate)}</td>
+                    <td>
+                      <span className={'badge ' + getColor(days)}>
+                        {getStatus(days)} ({days} days)
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="green"
+                        onClick={() => handleSendReminder(m)}
+                      >
+                        Send reminder
+                      </button>
+                      <button onClick={() => handleMarkPaid(m._id, m.name)}>
+                        Mark as paid
+                      </button>
+                      <button
+                        className="danger"
+                        onClick={() => handleDeleteMember(m._id, m.name)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      <h2>Packages</h2>
-      <form onSubmit={handleAddPackage}>
-        <input
-          placeholder="Package name"
-          value={pkgName}
-          onChange={(e) => setPkgName(e.target.value)}
-        />{' '}
-        <input
-          placeholder="Fee"
-          type="number"
-          value={pkgFee}
-          onChange={(e) => setPkgFee(e.target.value)}
-        />{' '}
-        <input
-          placeholder="Days"
-          type="number"
-          value={pkgDays}
-          onChange={(e) => setPkgDays(e.target.value)}
-        />{' '}
-        <button type="submit">Add Package</button>
-      </form>
-      <p>{pkgMessage}</p>
+      <div className="card">
+        <h2>Packages</h2>
+        <form onSubmit={handleAddPackage}>
+          <input
+            placeholder="Package name"
+            value={pkgName}
+            onChange={(e) => setPkgName(e.target.value)}
+          />
+          <input
+            placeholder="Fee"
+            type="number"
+            value={pkgFee}
+            onChange={(e) => setPkgFee(e.target.value)}
+          />
+          <input
+            placeholder="Days"
+            type="number"
+            value={pkgDays}
+            onChange={(e) => setPkgDays(e.target.value)}
+          />
+          <button type="submit">Add Package</button>
+        </form>
+        <p>{pkgMessage}</p>
 
-      {packages.map((p) => (
-        <p key={p._id}>
-          {p.name} - Rs {p.fee} - {p.durationDays} days{' '}
-          <button onClick={() => handleDeletePackage(p._id)}>Delete</button>
-        </p>
-      ))}
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Fee</th>
+              <th>Days</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {packages.map((p) => (
+              <tr key={p._id}>
+                <td>{p.name}</td>
+                <td>Rs {p.fee}</td>
+                <td>{p.durationDays}</td>
+                <td>
+                  <button
+                    className="danger"
+                    onClick={() => handleDeletePackage(p._id)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
