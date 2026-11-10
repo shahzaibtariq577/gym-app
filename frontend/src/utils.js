@@ -1,21 +1,39 @@
 export const API = 'http://localhost:5000/api'
 
+// A member is "Due soon" when the fee is due in this many days or less
+export const DUE_SOON_DAYS = 2
+
 export function daysLeft(dueDate) {
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const due = new Date(dueDate)
-  return Math.ceil((due - today) / (1000 * 60 * 60 * 24))
-}
-
-export function getColor(days) {
-  if (days < 0) return 'red'
-  if (days <= 7) return 'orange'
-  return 'green'
+  due.setHours(0, 0, 0, 0)
+  return Math.round((due - today) / (1000 * 60 * 60 * 24))
 }
 
 export function getStatus(days) {
   if (days < 0) return 'Late'
-  if (days <= 7) return 'Due soon'
+  if (days <= DUE_SOON_DAYS) return 'Due soon'
   return 'OK'
+}
+
+export function getColor(days) {
+  const status = getStatus(days)
+  if (status === 'Late') return 'red'
+  if (status === 'Due soon') return 'orange'
+  return 'green'
+}
+
+export function statusLabel(days) {
+  if (days < 0) {
+    const late = Math.abs(days)
+    return 'Late by ' + late + (late === 1 ? ' day' : ' days')
+  }
+  if (days === 0) return 'Due today'
+  if (days <= DUE_SOON_DAYS) {
+    return 'Due in ' + days + (days === 1 ? ' day' : ' days')
+  }
+  return 'OK (' + days + ' days)'
 }
 
 export function formatDate(date) {

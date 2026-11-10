@@ -52,67 +52,96 @@ function Layout() {
   }
 
   return (
-    <div className="container">
-      <div className="header">
-        {editing ? (
-          <form onSubmit={saveName}>
-            <input
-              autoFocus
-              placeholder="Your gym name"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-            />
-            <button type="submit">Save</button>
-            <button
-              type="button"
-              className="grey"
-              onClick={() => setEditing(false)}
-            >
-              Cancel
-            </button>
-          </form>
-        ) : (
-          <>
-            <h1>{gymName}</h1>
-            <button className="grey" onClick={startEdit}>
-              Edit name
-            </button>
-          </>
-        )}
-      </div>
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-logo">🏋️</div>
+          {editing ? (
+            <form onSubmit={saveName}>
+              <input
+                autoFocus
+                placeholder="Your gym name"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+              />
+              <button type="submit">Save</button>
+              <button
+                type="button"
+                className="grey"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <>
+              <div className="brand-name">{gymName}</div>
+              <button className="link-btn" onClick={startEdit}>
+                Edit name
+              </button>
+            </>
+          )}
+        </div>
 
-      <nav className="nav">
-        <NavLink to="/" end className={navClass}>
-          Dashboard
-        </NavLink>
-        <NavLink to="/members" className={navClass}>
-          Members
-        </NavLink>
-        <NavLink to="/packages" className={navClass}>
-          Packages
-        </NavLink>
-      </nav>
+        <nav className="side-nav">
+          <NavLink to="/" end className={navClass}>
+            🏠 Dashboard
+          </NavLink>
+          <NavLink to="/members" className={navClass}>
+            👥 Members
+          </NavLink>
+          <NavLink to="/packages" className={navClass}>
+            📦 Packages
+          </NavLink>
+          <span className="disabled">
+            🧾 Payment History <span className="soon">Soon</span>
+          </span>
+        </nav>
 
-      <Routes>
-        <Route
-          path="/"
-          element={<Dashboard members={members} loadMembers={loadMembers} />}
-        />
-        <Route
-          path="/members"
-          element={
-            <Members
-              members={members}
-              packages={packages}
-              loadMembers={loadMembers}
-            />
-          }
-        />
-        <Route
-          path="/packages"
-          element={<Packages packages={packages} loadPackages={loadPackages} />}
-        />
-      </Routes>
+        <div className="side-footer">
+          <div className="avatar">👤</div>
+          <div>
+            <div>Gym Owner</div>
+            <small>Admin</small>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main">
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Dashboard
+                gymName={gymName}
+                members={members}
+                loadMembers={loadMembers}
+              />
+            }
+          />
+          <Route
+            path="/members"
+            element={
+              <Members
+                members={members}
+                packages={packages}
+                loadMembers={loadMembers}
+              />
+            }
+          />
+          <Route
+            path="/packages"
+            element={
+              <Packages
+                packages={packages}
+                members={members}
+                loadPackages={loadPackages}
+                loadMembers={loadMembers}
+              />
+            }
+          />
+        </Routes>
+      </main>
     </div>
   )
 }

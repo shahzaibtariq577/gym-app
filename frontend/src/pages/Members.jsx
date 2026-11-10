@@ -1,19 +1,32 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   API,
   daysLeft,
   getColor,
   getStatus,
+  statusLabel,
   formatDate,
   sendReminder,
 } from '../utils'
 
+const PAGE_SIZE = 10
+const FILTERS = { all: 'All Status', late: 'Late', soon: 'Due soon', ok: 'OK' }
+const STATUS_OF = { late: 'Late', soon: 'Due soon', ok: 'OK' }
+
 function Members({ members, packages, loadMembers }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const statusParam = searchParams.get('status')
+  const statusFilter = FILTERS[statusParam] ? statusParam : 'all'
+
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+
+  const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [packageId, setPackageId] = useState('')
   const [message, setMessage] = useState('')
-  const [search, setSearch] = useState('')
 
   const [editingId, setEditingId] = useState('')
   const [editName, setEditName] = useState('')
@@ -25,19 +38,72 @@ function Members({ members, packages, loadMembers }) {
     : packages.length > 0
       ? packages[0]._id
       : ''
+  const selectedPackage = packages.find((p) => p._id === selectedId)
 
-  const filtered = members.filter((m) =>
-    (m.name + ' ' + m.phone).toLowerCase().includes(search.toLowerCase())
-  )
+  let duePreview = 'Auto calculated'
+  if (selectedPackage) {
+    const d = new Date()
+    d.setDate(d.getDate() + selectedPackage.durationDays)
+    duePreview = formatDate(d)
+  }
+
+  const filtered = members.filter((m) => {
+    const textMatch = (m.name + ' ' + m.phone)
+      .toLowerCase()
+      .includes(search.toLowerCase())
+    const statusMatch =
+      statusFilter === 'all' ||
+      getStatus(daysLeft(m.nextDueDate)) === STATUS_OF[statusFilter]
+    return textMatch && statusMatch
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages - 1)
+  const start = safePage * PAGE_SIZE
+  const visible = filtered.slice(start, start + PAGE_SIZE)
+  const showingFrom = filtered.length === 0 ? 0 : start + 1
+  const showingTo = Math.min(start + PAGE_SIZE, filtered.length)
+
+  function changeFilter(value) {
+    if (value === 'all') {
+      setSearchParams({})
+    } else {
+      setSearchParams({ status: value })
+    }
+    setPage(0)
+  }
+
+  function changeSearch(value) {
+    setSearch(value)
+    setPage(0)
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
     setMessage('')
 
+    const digits = phone.replace(/\D/g, '')
+    if (!name.trim()) {
+      setMessage('Error: Please type the member name')
+      return
+    }
+    if (digits.length < 10) {
+      setMessage('Error: Phone number must have at least 10 digits')
+      return
+    }
+    if (!selectedId) {
+      setMessage('Error: Please add a package first')
+      return
+    }
+
     fetch(API + '/members', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, packageId: selectedId }),
+      body: JSON.stringify({
+        name: name.trim(),
+        phone: phone.trim(),
+        packageId: selectedId,
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -47,6 +113,7 @@ function Members({ members, packages, loadMembers }) {
           setMessage('Member added')
           setName('')
           setPhone('')
+          setShowForm(false)
           loadMembers()
         }
       })
@@ -64,10 +131,16 @@ function Members({ members, packages, loadMembers }) {
   }
 
   function saveEdit(id) {
+    const digits = editPhone.replace(/\D/g, '')
+    if (!editName.trim() || digits.length < 10) {
+      setEditMessage('Error: Name is needed and phone must have 10+ digits')
+      return
+    }
+
     fetch(API + '/members/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editName, phone: editPhone }),
+      body: JSON.stringify({ name: editName.trim(), phone: editPhone.trim() }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -99,42 +172,100 @@ function Members({ members, packages, loadMembers }) {
 
   return (
     <div>
-      <div className="card">
-        <h2>Add Member</h2>
-        <form onSubmit={handleSubmit}>
-          <input
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            placeholder="Phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <select
-            value={selectedId}
-            onChange={(e) => setPackageId(e.target.value)}
-          >
-            {packages.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.name} - Rs {p.fee}
-              </option>
-            ))}
-          </select>
-          <button type="submit">Add Member</button>
-        </form>
-        <p>{message}</p>
+      <h1 className="page-title">Members</h1>
+
+      <div className="toolbar">
+        <input
+          placeholder="🔍 Search by name or phone..."
+          value={search}
+          onChange={(e) => changeSearch(e.target.value)}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => changeFilter(e.target.value)}
+        >
+          <option value="all">All Status</option>
+          <option value="late">Late</option>
+          <option value="soon">Due soon</option>
+          <option value="ok">OK</option>
+        </select>
+        <button onClick={() => setShowForm(!showForm)}>
+          {showForm ? 'Close' : '+ Add Member'}
+        </button>
       </div>
 
+      {message && (
+        <p className={message.startsWith('Error') ? 'msg-error' : 'msg-ok'}>
+          {message}
+        </p>
+      )}
+
+      {showForm && (
+        <div className="card">
+          <h2>👤 Add New Member</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid">
+              <label className="form-field">
+                Full name *
+                <input
+                  placeholder="Enter name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+              <label className="form-field">
+                Phone number *
+                <input
+                  placeholder="03xxxxxxxxx"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </label>
+              <label className="form-field">
+                Package *
+                <select
+                  value={selectedId}
+                  onChange={(e) => setPackageId(e.target.value)}
+                >
+                  {packages.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name} - Rs {p.fee}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="form-field">
+                Fee (Rs)
+                <input
+                  readOnly
+                  value={selectedPackage ? selectedPackage.fee : ''}
+                />
+              </label>
+              <label className="form-field">
+                Next due date
+                <input readOnly value={duePreview} />
+              </label>
+              <button type="submit">Add Member</button>
+            </div>
+          </form>
+          <p className="info-note">
+            ✅ Auto calculation: the next due date is worked out from the
+            selected package.
+          </p>
+        </div>
+      )}
+
       <div className="card">
-        <h2>All Members ({members.length})</h2>
-        <input
-          placeholder="Search by name or phone"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <p>{editMessage}</p>
+        {editMessage && (
+          <p
+            className={
+              editMessage.startsWith('Error') ? 'msg-error' : 'msg-ok'
+            }
+          >
+            {editMessage}
+          </p>
+        )}
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -149,7 +280,7 @@ function Members({ members, packages, loadMembers }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((m) => {
+              {visible.map((m) => {
                 const days = daysLeft(m.nextDueDate)
                 const isEditing = editingId === m._id
                 return (
@@ -179,7 +310,7 @@ function Members({ members, packages, loadMembers }) {
                     <td>{formatDate(m.nextDueDate)}</td>
                     <td>
                       <span className={'badge ' + getColor(days)}>
-                        {getStatus(days)} ({days} days)
+                        {statusLabel(days)}
                       </span>
                     </td>
                     <td>
@@ -193,27 +324,32 @@ function Members({ members, packages, loadMembers }) {
                       ) : (
                         <>
                           <button
-                            className="green"
+                            className="green icon-btn"
+                            title="Send reminder"
                             onClick={() => sendReminder(m)}
                           >
-                            Send reminder
+                            💬
                           </button>
                           <button
-                            className="grey"
+                            className="grey icon-btn"
+                            title="Edit"
                             onClick={() => startEdit(m)}
                           >
-                            Edit
+                            ✏️
                           </button>
                           <button
+                            className="icon-btn"
+                            title="Mark as paid"
                             onClick={() => handleMarkPaid(m._id, m.name)}
                           >
-                            Mark as paid
+                            ✅
                           </button>
                           <button
-                            className="danger"
+                            className="danger icon-btn"
+                            title="Delete"
                             onClick={() => handleDeleteMember(m._id, m.name)}
                           >
-                            Delete
+                            🗑️
                           </button>
                         </>
                       )}
@@ -223,6 +359,31 @@ function Members({ members, packages, loadMembers }) {
               })}
             </tbody>
           </table>
+        </div>
+
+        {filtered.length === 0 && <p>No members found.</p>}
+
+        <div className="pager">
+          <span>
+            Showing {showingFrom}-{showingTo} of {filtered.length} members
+          </span>
+          <span>
+            <button
+              className="grey"
+              disabled={safePage === 0}
+              onClick={() => setPage(safePage - 1)}
+            >
+              ‹ Previous
+            </button>
+            Page {safePage + 1} of {totalPages}
+            <button
+              className="grey"
+              disabled={safePage >= totalPages - 1}
+              onClick={() => setPage(safePage + 1)}
+            >
+              Next ›
+            </button>
+          </span>
         </div>
       </div>
     </div>
