@@ -23,6 +23,26 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Edit a package (fee and days only)
+router.put('/:id', async (req, res) => {
+  try {
+    const { fee, durationDays } = req.body;
+
+    const pkg = await Package.findById(req.params.id);
+    if (!pkg) {
+      return res.status(404).json({ error: 'Package not found' });
+    }
+
+    if (fee) pkg.fee = fee;
+    if (durationDays) pkg.durationDays = durationDays;
+    await pkg.save();
+
+    res.json(pkg);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Delete a package
 router.delete('/:id', async (req, res) => {
   try {

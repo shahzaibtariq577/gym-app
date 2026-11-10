@@ -7,6 +7,11 @@ function Packages({ packages, loadPackages }) {
   const [pkgDays, setPkgDays] = useState('')
   const [pkgMessage, setPkgMessage] = useState('')
 
+  const [editingId, setEditingId] = useState('')
+  const [editFee, setEditFee] = useState('')
+  const [editDays, setEditDays] = useState('')
+  const [editMessage, setEditMessage] = useState('')
+
   function handleAddPackage(e) {
     e.preventDefault()
     setPkgMessage('')
@@ -29,6 +34,38 @@ function Packages({ packages, loadPackages }) {
           setPkgName('')
           setPkgFee('')
           setPkgDays('')
+          loadPackages()
+        }
+      })
+  }
+
+  function startEdit(p) {
+    setEditingId(p._id)
+    setEditFee(String(p.fee))
+    setEditDays(String(p.durationDays))
+    setEditMessage('')
+  }
+
+  function cancelEdit() {
+    setEditingId('')
+  }
+
+  function saveEdit(id) {
+    fetch(API + '/packages/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fee: Number(editFee),
+        durationDays: Number(editDays),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setEditMessage('Error: ' + data.error)
+        } else {
+          setEditingId('')
+          setEditMessage('Package updated')
           loadPackages()
         }
       })
@@ -66,6 +103,7 @@ function Packages({ packages, loadPackages }) {
         <button type="submit">Add Package</button>
       </form>
       <p>{pkgMessage}</p>
+      <p>{editMessage}</p>
 
       <table>
         <thead>
@@ -77,21 +115,58 @@ function Packages({ packages, loadPackages }) {
           </tr>
         </thead>
         <tbody>
-          {packages.map((p) => (
-            <tr key={p._id}>
-              <td>{p.name}</td>
-              <td>Rs {p.fee}</td>
-              <td>{p.durationDays}</td>
-              <td>
-                <button
-                  className="danger"
-                  onClick={() => handleDeletePackage(p._id, p.name)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
+          {packages.map((p) => {
+            const isEditing = editingId === p._id
+            return (
+              <tr key={p._id}>
+                <td>{p.name}</td>
+                <td>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={editFee}
+                      onChange={(e) => setEditFee(e.target.value)}
+                    />
+                  ) : (
+                    'Rs ' + p.fee
+                  )}
+                </td>
+                <td>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={editDays}
+                      onChange={(e) => setEditDays(e.target.value)}
+                    />
+                  ) : (
+                    p.durationDays
+                  )}
+                </td>
+                <td>
+                  {isEditing ? (
+                    <>
+                      <button onClick={() => saveEdit(p._id)}>Save</button>
+                      <button className="grey" onClick={cancelEdit}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="grey" onClick={() => startEdit(p)}>
+                        Edit
+                      </button>
+                      <button
+                        className="danger"
+                        onClick={() => handleDeletePackage(p._id, p.name)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
