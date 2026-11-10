@@ -7,9 +7,13 @@ import Members from './pages/Members'
 import Packages from './pages/Packages'
 import PaymentHistory from './pages/PaymentHistory'
 
+const LOAD_ERROR = 'Could not load data. Is the backend running?'
+
 function Layout() {
   const [members, setMembers] = useState([])
   const [packages, setPackages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [gymName, setGymName] = useState(
     () => localStorage.getItem('gymName') || 'My Gym'
   )
@@ -17,20 +21,35 @@ function Layout() {
   const [nameInput, setNameInput] = useState('')
 
   function loadMembers() {
-    fetch(API + '/members')
+    return fetch(API + '/members')
       .then((res) => res.json())
-      .then((data) => setMembers(data))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setMembers(data)
+          setLoadError('')
+        } else {
+          setLoadError(LOAD_ERROR)
+        }
+      })
+      .catch(() => setLoadError(LOAD_ERROR))
   }
 
   function loadPackages() {
-    fetch(API + '/packages')
+    return fetch(API + '/packages')
       .then((res) => res.json())
-      .then((data) => setPackages(data))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setPackages(data)
+          setLoadError('')
+        } else {
+          setLoadError(LOAD_ERROR)
+        }
+      })
+      .catch(() => setLoadError(LOAD_ERROR))
   }
 
   useEffect(() => {
-    loadMembers()
-    loadPackages()
+    Promise.all([loadMembers(), loadPackages()]).then(() => setLoading(false))
   }, [])
 
   function startEdit() {
@@ -109,40 +128,46 @@ function Layout() {
       </aside>
 
       <main className="main">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Dashboard
-                gymName={gymName}
-                members={members}
-                loadMembers={loadMembers}
-              />
-            }
-          />
-          <Route
-            path="/members"
-            element={
-              <Members
-                members={members}
-                packages={packages}
-                loadMembers={loadMembers}
-              />
-            }
-          />
-          <Route
-            path="/packages"
-            element={
-              <Packages
-                packages={packages}
-                members={members}
-                loadPackages={loadPackages}
-                loadMembers={loadMembers}
-              />
-            }
-          />
-          <Route path="/payments" element={<PaymentHistory />} />
-        </Routes>
+        {loadError && <p className="msg-error">{loadError}</p>}
+
+        {loading ? (
+          <div className="card">Loading...</div>
+        ) : (
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Dashboard
+                  gymName={gymName}
+                  members={members}
+                  loadMembers={loadMembers}
+                />
+              }
+            />
+            <Route
+              path="/members"
+              element={
+                <Members
+                  members={members}
+                  packages={packages}
+                  loadMembers={loadMembers}
+                />
+              }
+            />
+            <Route
+              path="/packages"
+              element={
+                <Packages
+                  packages={packages}
+                  members={members}
+                  loadPackages={loadPackages}
+                  loadMembers={loadMembers}
+                />
+              }
+            />
+            <Route path="/payments" element={<PaymentHistory />} />
+          </Routes>
+        )}
       </main>
     </div>
   )
