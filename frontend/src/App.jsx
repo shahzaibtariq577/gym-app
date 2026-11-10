@@ -5,6 +5,7 @@ import { API } from './utils'
 import Dashboard from './pages/Dashboard'
 import Members from './pages/Members'
 import Packages from './pages/Packages'
+import PaymentHistory from './pages/PaymentHistory'
 
 function Layout() {
   const [members, setMembers] = useState([])
@@ -93,9 +94,9 @@ function Layout() {
           <NavLink to="/packages" className={navClass}>
             📦 Packages
           </NavLink>
-          <span className="disabled">
-            🧾 Payment History <span className="soon">Soon</span>
-          </span>
+          <NavLink to="/payments" className={navClass}>
+            🧾 Payment History
+          </NavLink>
         </nav>
 
         <div className="side-footer">
@@ -140,6 +141,7 @@ function Layout() {
               />
             }
           />
+          <Route path="/payments" element={<PaymentHistory />} />
         </Routes>
       </main>
     </div>

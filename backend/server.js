@@ -7,10 +7,13 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
 const memberRoutes = require('./routes/members');
 app.use('/api/members', memberRoutes);
 const packageRoutes = require('./routes/packages');
 app.use('/api/packages', packageRoutes);
+const paymentRoutes = require('./routes/payments');
+app.use('/api/payments', paymentRoutes);
 
 app.get('/', (req, res) => {
   res.send('Gym app backend is running');

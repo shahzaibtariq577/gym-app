@@ -1,6 +1,7 @@
 const express = require('express');
 const Member = require('../models/Member');
 const Package = require('../models/Package');
+const Payment = require('../models/Payment');
 
 const router = express.Router();
 
@@ -74,7 +75,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Mark a member as paid
+// Mark a member as paid (also saves a payment record)
 router.put('/:id/pay', async (req, res) => {
   try {
     const member = await Member.findById(req.params.id);
@@ -88,12 +89,23 @@ router.put('/:id/pay', async (req, res) => {
     }
 
     const today = new Date();
-    const startFrom = member.nextDueDate > today ? member.nextDueDate : today;
+    const oldDueDate = member.nextDueDate;
+    const startFrom = oldDueDate > today ? oldDueDate : today;
     const newDueDate = new Date(startFrom);
     newDueDate.setDate(newDueDate.getDate() + pkg.durationDays);
 
     member.nextDueDate = newDueDate;
     await member.save();
+
+    await Payment.create({
+      memberId: member._id,
+      memberName: member.name,
+      packageName: member.packageName,
+      amount: member.fee,
+      paidOn: today,
+      oldDueDate: oldDueDate,
+      newDueDate: newDueDate,
+    });
 
     res.json(member);
   } catch (err) {
