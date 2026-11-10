@@ -44,6 +44,26 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Edit a member (name and phone only)
+router.put('/:id', async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+
+    const member = await Member.findById(req.params.id);
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    if (name) member.name = name;
+    if (phone) member.phone = phone;
+    await member.save();
+
+    res.json(member);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Delete a member
 router.delete('/:id', async (req, res) => {
   try {
@@ -53,6 +73,7 @@ router.delete('/:id', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
 // Mark a member as paid
 router.put('/:id/pay', async (req, res) => {
   try {
@@ -79,4 +100,5 @@ router.put('/:id/pay', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
 module.exports = router;

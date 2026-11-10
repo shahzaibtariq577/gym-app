@@ -15,6 +15,11 @@ function Members({ members, packages, loadMembers }) {
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
 
+  const [editingId, setEditingId] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editMessage, setEditMessage] = useState('')
+
   const selectedId = packages.some((p) => p._id === packageId)
     ? packageId
     : packages.length > 0
@@ -42,6 +47,35 @@ function Members({ members, packages, loadMembers }) {
           setMessage('Member added')
           setName('')
           setPhone('')
+          loadMembers()
+        }
+      })
+  }
+
+  function startEdit(m) {
+    setEditingId(m._id)
+    setEditName(m.name)
+    setEditPhone(m.phone)
+    setEditMessage('')
+  }
+
+  function cancelEdit() {
+    setEditingId('')
+  }
+
+  function saveEdit(id) {
+    fetch(API + '/members/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editName, phone: editPhone }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setEditMessage('Error: ' + data.error)
+        } else {
+          setEditingId('')
+          setEditMessage('Member updated')
           loadMembers()
         }
       })
@@ -100,6 +134,7 @@ function Members({ members, packages, loadMembers }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <p>{editMessage}</p>
         <div className="table-wrap">
           <table>
             <thead>
@@ -116,10 +151,29 @@ function Members({ members, packages, loadMembers }) {
             <tbody>
               {filtered.map((m) => {
                 const days = daysLeft(m.nextDueDate)
+                const isEditing = editingId === m._id
                 return (
                   <tr key={m._id}>
-                    <td>{m.name}</td>
-                    <td>{m.phone}</td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                        />
+                      ) : (
+                        m.name
+                      )}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                        />
+                      ) : (
+                        m.phone
+                      )}
+                    </td>
                     <td>{m.packageName}</td>
                     <td>Rs {m.fee}</td>
                     <td>{formatDate(m.nextDueDate)}</td>
@@ -129,21 +183,40 @@ function Members({ members, packages, loadMembers }) {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="green"
-                        onClick={() => sendReminder(m)}
-                      >
-                        Send reminder
-                      </button>
-                      <button onClick={() => handleMarkPaid(m._id, m.name)}>
-                        Mark as paid
-                      </button>
-                      <button
-                        className="danger"
-                        onClick={() => handleDeleteMember(m._id, m.name)}
-                      >
-                        Delete
-                      </button>
+                      {isEditing ? (
+                        <>
+                          <button onClick={() => saveEdit(m._id)}>Save</button>
+                          <button className="grey" onClick={cancelEdit}>
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="green"
+                            onClick={() => sendReminder(m)}
+                          >
+                            Send reminder
+                          </button>
+                          <button
+                            className="grey"
+                            onClick={() => startEdit(m)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleMarkPaid(m._id, m.name)}
+                          >
+                            Mark as paid
+                          </button>
+                          <button
+                            className="danger"
+                            onClick={() => handleDeleteMember(m._id, m.name)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 )
