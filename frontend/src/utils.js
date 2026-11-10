@@ -58,11 +58,16 @@ export function sendReminder(m) {
       'Hello ' + m.name + ', your gym fee of Rs ' + m.fee +
       ' was due on ' + formatDate(m.nextDueDate) +
       '. Please pay as soon as you can. Thank you!'
+  } else if (days === 0) {
+    text =
+      'Hello ' + m.name + ', your gym fee of Rs ' + m.fee +
+      ' is due today. Please pay on time. Thank you!'
   } else {
     text =
       'Hello ' + m.name + ', your gym fee of Rs ' + m.fee +
       ' is due on ' + formatDate(m.nextDueDate) +
-      ' (' + days + ' days left). Please pay on time. Thank you!'
+      ' (' + days + (days === 1 ? ' day' : ' days') +
+      ' left). Please pay on time. Thank you!'
   }
 
   const url =

@@ -17,6 +17,21 @@ function cleanFeatures(list) {
   return result.slice(0, 10);
 }
 
+// Check name, fee and days. Returns an error text, or '' if all is fine
+function checkPackage(name, fee, durationDays) {
+  const cleanName = String(name || '').trim();
+  const feeNumber = Number(fee);
+  const daysNumber = Number(durationDays);
+
+  if (!cleanName) return 'Package name is required';
+  if (cleanName.length > 30) return 'Package name is too long (max 30 letters)';
+  if (!(feeNumber > 0)) return 'Fee must be more than 0';
+  if (!(daysNumber > 0) || !Number.isInteger(daysNumber)) {
+    return 'Days must be a whole number more than 0';
+  }
+  return '';
+}
+
 // Show all packages
 router.get('/', async (req, res) => {
   try {
@@ -31,10 +46,16 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, fee, durationDays, features } = req.body;
+
+    const problem = checkPackage(name, fee, durationDays);
+    if (problem) {
+      return res.status(400).json({ error: problem });
+    }
+
     const pkg = await Package.create({
-      name,
-      fee,
-      durationDays,
+      name: String(name).trim(),
+      fee: Number(fee),
+      durationDays: Number(durationDays),
       features: cleanFeatures(features),
     });
     res.status(201).json(pkg);
@@ -53,6 +74,15 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Package not found' });
     }
 
+    const problem = checkPackage(
+      name || pkg.name,
+      fee || pkg.fee,
+      durationDays || pkg.durationDays
+    );
+    if (problem) {
+      return res.status(400).json({ error: problem });
+    }
+
     const oldName = pkg.name;
     const newName = name ? String(name).trim() : '';
 
@@ -69,8 +99,8 @@ router.put('/:id', async (req, res) => {
       pkg.name = newName;
     }
 
-    if (fee) pkg.fee = fee;
-    if (durationDays) pkg.durationDays = durationDays;
+    if (fee) pkg.fee = Number(fee);
+    if (durationDays) pkg.durationDays = Number(durationDays);
     if (Array.isArray(features)) pkg.features = cleanFeatures(features);
     await pkg.save();
 

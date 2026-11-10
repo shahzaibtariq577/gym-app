@@ -5,6 +5,19 @@ const Payment = require('../models/Payment');
 
 const router = express.Router();
 
+// Check name and phone. Returns an error text, or '' if all is fine
+function checkNameAndPhone(name, phone) {
+  const cleanName = String(name || '').trim();
+  const digits = String(phone || '').replace(/\D/g, '');
+
+  if (!cleanName) return 'Name is required';
+  if (cleanName.length > 60) return 'Name is too long (max 60 letters)';
+  if (digits.length < 10 || digits.length > 15) {
+    return 'Phone must have 10 to 15 digits';
+  }
+  return '';
+}
+
 // Show all members
 router.get('/', async (req, res) => {
   try {
@@ -20,6 +33,11 @@ router.post('/', async (req, res) => {
   try {
     const { name, phone, photo, packageId } = req.body;
 
+    const problem = checkNameAndPhone(name, phone);
+    if (problem) {
+      return res.status(400).json({ error: problem });
+    }
+
     const pkg = await Package.findById(packageId);
     if (!pkg) {
       return res.status(400).json({ error: 'Package not found' });
@@ -30,8 +48,8 @@ router.post('/', async (req, res) => {
     nextDueDate.setDate(nextDueDate.getDate() + pkg.durationDays);
 
     const member = await Member.create({
-      name,
-      phone,
+      name: String(name).trim(),
+      phone: String(phone).trim(),
       photo,
       packageName: pkg.name,
       fee: pkg.fee,
@@ -55,8 +73,16 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    if (name) member.name = name;
-    if (phone) member.phone = phone;
+    const problem = checkNameAndPhone(
+      name || member.name,
+      phone || member.phone
+    );
+    if (problem) {
+      return res.status(400).json({ error: problem });
+    }
+
+    if (name) member.name = String(name).trim();
+    if (phone) member.phone = String(phone).trim();
     await member.save();
 
     res.json(member);
