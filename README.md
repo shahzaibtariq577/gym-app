@@ -6,16 +6,20 @@ WhatsApp reminder with one click.
 
 ## Features
 
-- Add members with a package (fee and next due date are worked out automatically)
-- Member list sorted by due date, with colors: red (late), orange (due in 7 days), green (OK)
-- Mark a member as paid (moves the due date forward)
-- Add and delete packages
-- "Send reminder" button that opens WhatsApp with the message already written
+- **Dashboard:** summary boxes (Late, Due soon, OK, Total members) and a list
+  of members whose fee is due in 2 days or less, with a "Show more" button
+- **Members page:** add, edit, delete, and search members by name or phone
+- **Packages page:** add, edit, and delete packages (name, fee, days)
+- Next fee due date is worked out automatically from the package
+- Colour badges: red (late), orange (due in 7 days), green (OK)
+- "Mark as paid" moves the due date forward by the package days
+- "Send reminder" opens WhatsApp with the message already written
+- The owner can set his own gym name as the main heading
 - "Are you sure?" box before delete and mark as paid
 
 ## Tech used
 
-- Frontend: React (Vite)
+- Frontend: React (Vite) and React Router
 - Backend: Node.js and Express
 - Database: MongoDB Atlas (Mongoose)
 
@@ -37,9 +41,22 @@ Frontend:
 
 Then open http://localhost:5173
 
+## API
+
+| Method | Address | What it does |
+| --- | --- | --- |
+| GET | /api/members | Show all members |
+| POST | /api/members | Add a member |
+| PUT | /api/members/:id | Edit a member (name, phone) |
+| PUT | /api/members/:id/pay | Mark as paid |
+| DELETE | /api/members/:id | Delete a member |
+| GET | /api/packages | Show all packages |
+| POST | /api/packages | Add a package |
+| PUT | /api/packages/:id | Edit a package (fee, days) |
+| DELETE | /api/packages/:id | Delete a package |
+
 ## Planned
 
 - Photo upload for members
-- Edit members and packages
 - Owner login
 - Automatic reminders and AI-written messages in Urdu or English
