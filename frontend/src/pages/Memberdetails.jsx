@@ -75,6 +75,31 @@ function MemberDetails({ members, loadMembers }) {
       .catch(() => setMessage('Error: Could not reach the backend'))
   }
 
+  // Undo the newest payment: the due date goes back to the date before it
+  function handleUndo(payment) {
+    const backText = payment.oldDueDate
+      ? ' The due date goes back to ' + formatDate(payment.oldDueDate) + '.'
+      : ''
+    const ok = window.confirm(
+      'Undo the payment of Rs ' + payment.amount.toLocaleString() + '?' + backText
+    )
+    if (!ok) return
+    setMessage('')
+
+    fetch(API + '/payments/' + payment._id, { method: 'DELETE' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setMessage('Error: ' + data.error)
+        } else {
+          setMessage('Payment undone')
+          loadMembers()
+          loadPayments()
+        }
+      })
+      .catch(() => setMessage('Error: Could not reach the backend'))
+  }
+
   function openPhotoEdit() {
     setNewPhoto('')
     setPhotoMessage('')
@@ -313,16 +338,30 @@ function MemberDetails({ members, loadMembers }) {
                       <th>Amount</th>
                       <th>Due date before</th>
                       <th>Next due date</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {payments.map((p) => (
+                    {payments.map((p, index) => (
                       <tr key={p._id}>
                         <td>{formatDate(p.paidOn)}</td>
                         <td>{p.packageName}</td>
                         <td>Rs {p.amount.toLocaleString()}</td>
                         <td>{p.oldDueDate ? formatDate(p.oldDueDate) : '-'}</td>
                         <td>{p.newDueDate ? formatDate(p.newDueDate) : '-'}</td>
+                        <td>
+                          {index === 0 ? (
+                            <button
+                              className="danger"
+                              title="Undo this payment"
+                              onClick={() => handleUndo(p)}
+                            >
+                              ↩ Undo
+                            </button>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

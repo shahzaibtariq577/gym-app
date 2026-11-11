@@ -30,6 +30,19 @@ function checkPhoto(photo) {
   return '';
 }
 
+// Save a member together with a payment, safely.
+// The payment is saved first. If saving the member fails,
+// the payment is removed again, so the two always match.
+async function saveMemberWithPayment(member, paymentData) {
+  const payment = await Payment.create(paymentData);
+  try {
+    await member.save();
+  } catch (err) {
+    await Payment.findByIdAndDelete(payment._id);
+    throw err;
+  }
+}
+
 // Show all members
 router.get('/', async (req, res) => {
   try {
@@ -152,11 +165,12 @@ router.put('/:id', async (req, res) => {
 
     if (name) member.name = String(name).trim();
     if (phone) member.phone = String(phone).trim();
-    await member.save();
 
     if (newPayment) {
       newPayment.memberName = member.name;
-      await Payment.create(newPayment);
+      await saveMemberWithPayment(member, newPayment);
+    } else {
+      await member.save();
     }
 
     res.json(member);
@@ -195,9 +209,8 @@ router.put('/:id/pay', async (req, res) => {
     newDueDate.setDate(newDueDate.getDate() + pkg.durationDays);
 
     member.nextDueDate = newDueDate;
-    await member.save();
 
-    await Payment.create({
+    await saveMemberWithPayment(member, {
       memberId: member._id,
       memberName: member.name,
       packageName: member.packageName,
