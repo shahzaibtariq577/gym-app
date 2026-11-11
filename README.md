@@ -9,13 +9,22 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 ## Screenshot
 
 ![Dashboard](docs/dashboard.png)
+![Members](docs/Members.png)
+![MembersDetails](docs/Memberdetails.png)
+![Packages](docs/Packages.png)
+![AddPackages](docs/Addpackages.png)
+![PaymentHistory](docs/Paymenthistory.png)
+![MobileScreen](docs/Mobilescreen1.png)
+![MobileScreen](docs/mobilescreen2.png)
+
 
 ## Features
 
 **Dashboard**
 - Four clickable cards: Late, Due soon, OK and Total members (each opens the Members page with the right filter)
 - "Collected this month" card with the total and the number of payments
-- List of Late and Due soon members with quick buttons: send WhatsApp reminder and mark as paid
+- List of Late and Due soon members with their round photo and quick buttons: send WhatsApp reminder and mark as paid
+- Click a photo for a big popup, or click a name to open the member's details page
 
 **Members**
 - Add, edit and delete members
@@ -28,8 +37,10 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 
 **Member details page**
 - Click a member's name to open it
-- Photo (tap it for a big preview), status, phone, package, fee, join date and next due date
+- Photo (click it for a big preview), status, phone, package, fee, join date and next due date
+- Change or remove the photo at any time (choose from the PC or use the live camera)
 - Payment history of that member with the total paid
+- Send a reminder or mark as paid from the same page
 
 **Packages**
 - Package cards with name, days, fee and a check-mark list of details (for example Gym Access, Locker, Personal Trainer)
@@ -90,7 +101,7 @@ Base address: `http://localhost:5000/api`
 | --- | --- | --- |
 | GET | `/members` | All members, soonest due date first |
 | POST | `/members` | Add a member. Send `name`, `phone`, `packageId` and optional `photo` |
-| PUT | `/members/:id` | Edit name, phone, package (`packageId`), due date (`nextDueDate`) or start a new package today (`startToday: true`) |
+| PUT | `/members/:id` | Edit name, phone, photo (an empty `photo` removes it), package (`packageId`), due date (`nextDueDate`) or start a new package today (`startToday: true`) |
 | PUT | `/members/:id/pay` | Mark as paid: new due date and a payment record |
 | DELETE | `/members/:id` | Delete a member |
 | GET | `/packages` | All packages, cheapest first |
@@ -157,7 +168,7 @@ The backend does not reload by itself. After any change in the backend, stop it 
 - No owner login yet
 - Gym name is saved only in the browser
 - Reminders are sent by the owner with one click (not automatic)
-- Change a member's photo after adding
+- Phone numbers that start with 0 are treated as Pakistan numbers (+92) for WhatsApp
 - Automated tests
 - Deploy online (the camera needs https)
 
