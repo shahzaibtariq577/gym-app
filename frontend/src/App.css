@@ -828,3 +828,59 @@ tbody tr:hover {
 .file-btn:hover {
   filter: brightness(1.12);
 }
+
+/* ---------- Phone screens: compact tables ---------- */
+@media (max-width: 700px) {
+  .card {
+    padding: 12px;
+  }
+
+  .table-wrap table {
+    font-size: 12px;
+  }
+
+  .table-wrap th,
+  .table-wrap td {
+    padding: 8px 4px;
+  }
+
+  .table-wrap th {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  .table-wrap .badge {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .member-cell {
+    gap: 6px;
+  }
+
+  .member-photo {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .icon-btn {
+    padding: 5px 6px;
+    font-size: 13px;
+    margin: 1px;
+  }
+
+  .table-wrap td input {
+    width: 90px;
+    padding: 6px;
+    font-size: 12px;
+  }
+
+  .summary-box {
+    min-width: 140px;
+  }
+
+  .collect {
+    flex-wrap: wrap;
+  }
+}

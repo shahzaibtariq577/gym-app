@@ -180,13 +180,18 @@ function Dashboard({ gymName, members, loadMembers }) {
                       </td>
                       <td>
                         <button
-                          className="green"
+                          className="green icon-btn"
+                          title="Send reminder"
                           onClick={() => sendReminder(m)}
                         >
-                          Send reminder
+                          💬
                         </button>
-                        <button onClick={() => handleMarkPaid(m._id, m.name)}>
-                          Mark as paid
+                        <button
+                          className="icon-btn"
+                          title="Mark as paid"
+                          onClick={() => handleMarkPaid(m._id, m.name)}
+                        >
+                          ✅
                         </button>
                       </td>
                     </tr>

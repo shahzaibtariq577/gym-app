@@ -80,10 +80,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Edit a member (name and phone only)
+// Edit a member (name, phone, package, due date, or start a new package today)
 router.put('/:id', async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, packageId, nextDueDate, startToday } = req.body;
 
     const member = await Member.findById(req.params.id);
     if (!member) {
@@ -98,9 +98,57 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: problem });
     }
 
+    // Filled only when the member starts a new package today
+    let newPayment = null;
+
+    // New package: change the name and the fee.
+    if (packageId) {
+      const pkg = await Package.findById(packageId);
+      if (!pkg) {
+        return res.status(400).json({ error: 'Package not found' });
+      }
+      if (pkg.name !== member.packageName) {
+        member.packageName = pkg.name;
+        member.fee = pkg.fee;
+
+        // Start the new package today: new due date and a payment record
+        if (startToday === true) {
+          const today = new Date();
+          const oldDueDate = member.nextDueDate;
+          const newDueDate = new Date(today);
+          newDueDate.setDate(newDueDate.getDate() + pkg.durationDays);
+
+          member.nextDueDate = newDueDate;
+          newPayment = {
+            memberId: member._id,
+            memberName: member.name,
+            packageName: pkg.name,
+            amount: pkg.fee,
+            paidOn: today,
+            oldDueDate: oldDueDate,
+            newDueDate: newDueDate,
+          };
+        }
+      }
+    }
+
+    // New due date typed by the owner (ignored when starting today)
+    if (nextDueDate && !newPayment) {
+      const newDate = new Date(nextDueDate);
+      if (isNaN(newDate.getTime())) {
+        return res.status(400).json({ error: 'Due date is not valid' });
+      }
+      member.nextDueDate = newDate;
+    }
+
     if (name) member.name = String(name).trim();
     if (phone) member.phone = String(phone).trim();
     await member.save();
+
+    if (newPayment) {
+      newPayment.memberName = member.name;
+      await Payment.create(newPayment);
+    }
 
     res.json(member);
   } catch (err) {

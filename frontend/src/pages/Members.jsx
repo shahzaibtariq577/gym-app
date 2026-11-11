@@ -16,6 +16,14 @@ const PAGE_SIZE = 10
 const FILTERS = { all: 'All Status', late: 'Late', soon: 'Due soon', ok: 'OK' }
 const STATUS_OF = { late: 'Late', soon: 'Due soon', ok: 'OK' }
 
+// Turn a date into text like 2026-11-30 for the date box
+function toInputDate(date) {
+  const d = new Date(date)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return d.getFullYear() + '-' + month + '-' + day
+}
+
 function Members({ members, packages, loadMembers }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const statusParam = searchParams.get('status')
@@ -34,6 +42,11 @@ function Members({ members, packages, loadMembers }) {
   const [editingId, setEditingId] = useState('')
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [editPackageId, setEditPackageId] = useState('')
+  const [editOldPackageId, setEditOldPackageId] = useState('')
+  const [editStartToday, setEditStartToday] = useState(false)
+  const [editDueDate, setEditDueDate] = useState('')
+  const [editOldDueDate, setEditOldDueDate] = useState('')
   const [editMessage, setEditMessage] = useState('')
 
   const selectedId = packages.some((p) => p._id === packageId)
@@ -150,14 +163,26 @@ function Members({ members, packages, loadMembers }) {
   }
 
   function startEdit(m) {
+    const current = packages.find((p) => p.name === m.packageName)
+    const dueText = toInputDate(m.nextDueDate)
     setEditingId(m._id)
     setEditName(m.name)
     setEditPhone(m.phone)
+    setEditPackageId(current ? current._id : '')
+    setEditOldPackageId(current ? current._id : '')
+    setEditStartToday(false)
+    setEditDueDate(dueText)
+    setEditOldDueDate(dueText)
     setEditMessage('')
   }
 
   function cancelEdit() {
     setEditingId('')
+  }
+
+  function changeEditPackage(value) {
+    setEditPackageId(value)
+    setEditStartToday(false)
   }
 
   function saveEdit(id) {
@@ -166,11 +191,40 @@ function Members({ members, packages, loadMembers }) {
       setEditMessage('Error: Name is needed and phone must have 10+ digits')
       return
     }
+    if (!editDueDate) {
+      setEditMessage('Error: Please choose a due date')
+      return
+    }
+
+    const packageChanged =
+      editPackageId !== '' && editPackageId !== editOldPackageId
+    const startToday = packageChanged && editStartToday
+    const newPackage = packages.find((p) => p._id === editPackageId)
+
+    if (startToday && newPackage) {
+      const ok = window.confirm(
+        'Start ' +
+          newPackage.name +
+          ' from today? This saves a payment of Rs ' +
+          newPackage.fee +
+          '.'
+      )
+      if (!ok) return
+    }
+
+    const body = { name: editName.trim(), phone: editPhone.trim() }
+    if (editPackageId) body.packageId = editPackageId
+    if (startToday) {
+      body.startToday = true
+    } else if (editDueDate !== editOldDueDate) {
+      // Send the due date only if the owner changed it
+      body.nextDueDate = editDueDate
+    }
 
     fetch(API + '/members/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editName.trim(), phone: editPhone.trim() }),
+      body: JSON.stringify(body),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -337,6 +391,20 @@ function Members({ members, packages, loadMembers }) {
               {visible.map((m) => {
                 const days = daysLeft(m.nextDueDate)
                 const isEditing = editingId === m._id
+                const editPackage = packages.find(
+                  (p) => p._id === editPackageId
+                )
+                const packageChanged =
+                  editPackageId !== '' && editPackageId !== editOldPackageId
+                const startTodayOn = packageChanged && editStartToday
+
+                let dueBoxValue = editDueDate
+                if (startTodayOn && editPackage) {
+                  const d = new Date()
+                  d.setDate(d.getDate() + editPackage.durationDays)
+                  dueBoxValue = toInputDate(d)
+                }
+
                 return (
                   <tr key={m._id}>
                     <td>
@@ -372,9 +440,63 @@ function Members({ members, packages, loadMembers }) {
                         m.phone
                       )}
                     </td>
-                    <td>{m.packageName}</td>
-                    <td>Rs {m.fee}</td>
-                    <td>{formatDate(m.nextDueDate)}</td>
+                    <td>
+                      {isEditing ? (
+                        <div>
+                          <select
+                            value={editPackageId}
+                            onChange={(e) => changeEditPackage(e.target.value)}
+                          >
+                            {!editPackageId && (
+                              <option value="">Choose package</option>
+                            )}
+                            {packages.map((p) => (
+                              <option key={p._id} value={p._id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                          {packageChanged && (
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '12px',
+                                marginTop: '6px',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                style={{ margin: 0, padding: 0 }}
+                                checked={editStartToday}
+                                onChange={(e) =>
+                                  setEditStartToday(e.target.checked)
+                                }
+                              />
+                              Start new package from today
+                            </label>
+                          )}
+                        </div>
+                      ) : (
+                        m.packageName
+                      )}
+                    </td>
+                    <td>
+                      Rs {isEditing && editPackage ? editPackage.fee : m.fee}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="date"
+                          value={dueBoxValue}
+                          disabled={startTodayOn}
+                          onChange={(e) => setEditDueDate(e.target.value)}
+                        />
+                      ) : (
+                        formatDate(m.nextDueDate)
+                      )}
+                    </td>
                     <td>
                       <span className={'badge ' + getColor(days)}>
                         {statusLabel(days)}
