@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Members from './pages/Members'
 import Packages from './pages/Packages'
 import PaymentHistory from './pages/PaymentHistory'
+import MemberDetails from './pages/Memberdetails'
 
 const LOAD_ERROR = 'Could not load data. Is the backend running?'
 
@@ -152,6 +153,12 @@ function Layout() {
                   packages={packages}
                   loadMembers={loadMembers}
                 />
+              }
+            />
+            <Route
+              path="/members/:id"
+              element={
+                <MemberDetails members={members} loadMembers={loadMembers} />
               }
             />
             <Route

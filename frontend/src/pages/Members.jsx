@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import CameraCapture from '../CameraCapture'
 import {
   API,
@@ -414,7 +414,10 @@ function Members({ members, packages, loadMembers }) {
                           onChange={(e) => setEditName(e.target.value)}
                         />
                       ) : (
-                        <div className="member-cell">
+                        <Link
+                          className="member-cell member-link"
+                          to={'/members/' + m._id}
+                        >
                           {m.photo ? (
                             <img
                               className="member-photo"
@@ -427,7 +430,7 @@ function Members({ members, packages, loadMembers }) {
                             </div>
                           )}
                           <span>{m.name}</span>
-                        </div>
+                        </Link>
                       )}
                     </td>
                     <td>
