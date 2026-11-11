@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import CameraCapture from '../CameraCapture'
 import {
   API,
   daysLeft,
@@ -7,6 +8,7 @@ import {
   statusLabel,
   formatDate,
   sendReminder,
+  resizePhoto,
 } from '../utils'
 
 function MemberDetails({ members, loadMembers }) {
@@ -17,6 +19,9 @@ function MemberDetails({ members, loadMembers }) {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [bigPhoto, setBigPhoto] = useState(false)
+  const [showPhotoEdit, setShowPhotoEdit] = useState(false)
+  const [newPhoto, setNewPhoto] = useState('')
+  const [photoMessage, setPhotoMessage] = useState('')
 
   // The member comes from the list that App.jsx already loaded
   const member = members.find((m) => m._id === id)
@@ -70,6 +75,64 @@ function MemberDetails({ members, loadMembers }) {
       .catch(() => setMessage('Error: Could not reach the backend'))
   }
 
+  function openPhotoEdit() {
+    setNewPhoto('')
+    setPhotoMessage('')
+    setShowPhotoEdit(true)
+  }
+
+  function closePhotoEdit() {
+    setNewPhoto('')
+    setPhotoMessage('')
+    setShowPhotoEdit(false)
+  }
+
+  function handlePhotoFile(e) {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setPhotoMessage('Error: Please choose a picture file')
+      return
+    }
+    setPhotoMessage('')
+    resizePhoto(file)
+      .then((text) => setNewPhoto(text))
+      .catch((err) => setPhotoMessage('Error: ' + err.message))
+  }
+
+  function handleCameraPhoto(text) {
+    setPhotoMessage('')
+    setNewPhoto(text)
+  }
+
+  // Send the photo to the backend. An empty text removes the photo.
+  function savePhoto(photoText, doneText) {
+    setPhotoMessage('')
+
+    fetch(API + '/members/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo: photoText }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setPhotoMessage('Error: ' + data.error)
+        } else {
+          closePhotoEdit()
+          setMessage(doneText)
+          loadMembers()
+        }
+      })
+      .catch(() => setPhotoMessage('Error: Could not reach the backend'))
+  }
+
+  function handleRemovePhoto() {
+    if (!window.confirm('Remove the photo of ' + member.name + '?')) return
+    savePhoto('', 'Photo removed')
+  }
+
   if (!member) {
     return (
       <div>
@@ -83,6 +146,7 @@ function MemberDetails({ members, loadMembers }) {
 
   const days = daysLeft(member.nextDueDate)
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0)
+  const previewPhoto = newPhoto || member.photo
 
   return (
     <div>
@@ -131,6 +195,13 @@ function MemberDetails({ members, loadMembers }) {
           <button title="Mark as paid" onClick={handleMarkPaid}>
             ✅ Mark as paid
           </button>
+          <button
+            className="grey"
+            title="Change photo"
+            onClick={openPhotoEdit}
+          >
+            📷 Change photo
+          </button>
         </div>
       </div>
 
@@ -138,6 +209,59 @@ function MemberDetails({ members, loadMembers }) {
         <p className={message.startsWith('Error') ? 'msg-error' : 'msg-ok'}>
           {message}
         </p>
+      )}
+
+      {showPhotoEdit && (
+        <div className="card">
+          <h2>📷 Change photo</h2>
+
+          <div className="photo-field">
+            {previewPhoto ? (
+              <img className="photo-preview" src={previewPhoto} alt="Preview" />
+            ) : (
+              <div className="photo-empty">👤</div>
+            )}
+            <div className="photo-info">
+              <span className="photo-title">
+                {newPhoto
+                  ? 'New photo (not saved yet)'
+                  : 'Choose a new photo'}
+              </span>
+              <div className="photo-actions">
+                <label className="file-btn">
+                  📁 Choose from PC
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoFile}
+                  />
+                </label>
+                <CameraCapture onCapture={handleCameraPhoto} />
+              </div>
+            </div>
+          </div>
+
+          {photoMessage && <p className="msg-error">{photoMessage}</p>}
+
+          <div style={{ marginTop: '14px' }}>
+            <button
+              disabled={!newPhoto}
+              style={!newPhoto ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+              onClick={() => savePhoto(newPhoto, 'Photo updated')}
+            >
+              Save photo
+            </button>
+            {member.photo && (
+              <button className="danger" onClick={handleRemovePhoto}>
+                Remove photo
+              </button>
+            )}
+            <button className="grey" onClick={closePhotoEdit}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="card">

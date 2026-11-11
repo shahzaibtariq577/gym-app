@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   API,
   DUE_SOON_DAYS,
@@ -14,6 +14,7 @@ import {
 function Dashboard({ gymName, members, loadMembers }) {
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
+  const [bigMember, setBigMember] = useState(null)
   const navigate = useNavigate()
 
   function loadSummary() {
@@ -27,6 +28,15 @@ function Dashboard({ gymName, members, loadMembers }) {
 
   useEffect(() => {
     loadSummary()
+  }, [])
+
+  // Close the big photo with the Escape key
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') setBigMember(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   const lateCount = members.filter(
@@ -64,6 +74,23 @@ function Dashboard({ gymName, members, loadMembers }) {
 
   return (
     <div>
+      {bigMember && bigMember.photo && (
+        <div className="photo-modal" onClick={() => setBigMember(null)}>
+          <img src={bigMember.photo} alt={bigMember.name} />
+          <div className="photo-modal-name">{bigMember.name}</div>
+          <div>
+            <button
+              onClick={() => navigate('/members/' + bigMember._id)}
+            >
+              View details
+            </button>
+            <button className="grey" onClick={() => setBigMember(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="topbar">
         <span className="date-pill">📅 {today}</span>
       </div>
@@ -169,7 +196,37 @@ function Dashboard({ gymName, members, loadMembers }) {
                   const days = daysLeft(m.nextDueDate)
                   return (
                     <tr key={m._id}>
-                      <td>{m.name}</td>
+                      <td>
+                        <div className="member-cell">
+                          {m.photo ? (
+                            <img
+                              className="member-photo"
+                              src={m.photo}
+                              alt={m.name}
+                              title="Click to see big photo"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => setBigMember(m)}
+                            />
+                          ) : (
+                            <Link
+                              to={'/members/' + m._id}
+                              title="View member details"
+                              style={{ textDecoration: 'none' }}
+                            >
+                              <div className="member-photo placeholder">
+                                {m.name.charAt(0).toUpperCase()}
+                              </div>
+                            </Link>
+                          )}
+                          <Link
+                            to={'/members/' + m._id}
+                            title="View member details"
+                            style={{ color: 'inherit', textDecoration: 'none' }}
+                          >
+                            {m.name}
+                          </Link>
+                        </div>
+                      </td>
                       <td>{m.phone}</td>
                       <td>Rs {m.fee}</td>
                       <td>{formatDate(m.nextDueDate)}</td>

@@ -80,10 +80,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Edit a member (name, phone, package, due date, or start a new package today)
+// Edit a member (name, phone, photo, package, due date, or start a new package today)
 router.put('/:id', async (req, res) => {
   try {
-    const { name, phone, packageId, nextDueDate, startToday } = req.body;
+    const { name, phone, photo, packageId, nextDueDate, startToday } = req.body;
 
     const member = await Member.findById(req.params.id);
     if (!member) {
@@ -96,6 +96,15 @@ router.put('/:id', async (req, res) => {
     );
     if (problem) {
       return res.status(400).json({ error: problem });
+    }
+
+    // New photo (an empty photo removes the picture)
+    if (photo !== undefined) {
+      const photoProblem = checkPhoto(photo);
+      if (photoProblem) {
+        return res.status(400).json({ error: photoProblem });
+      }
+      member.photo = photo || '';
     }
 
     // Filled only when the member starts a new package today
