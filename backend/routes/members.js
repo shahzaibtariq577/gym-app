@@ -5,6 +5,9 @@ const Payment = require('../models/Payment');
 
 const router = express.Router();
 
+// Biggest photo text we accept (a 200x200 photo is about 10,000 to 20,000)
+const MAX_PHOTO_LENGTH = 100000;
+
 // Check name and phone. Returns an error text, or '' if all is fine
 function checkNameAndPhone(name, phone) {
   const cleanName = String(name || '').trim();
@@ -15,6 +18,15 @@ function checkNameAndPhone(name, phone) {
   if (digits.length < 10 || digits.length > 15) {
     return 'Phone must have 10 to 15 digits';
   }
+  return '';
+}
+
+// Check the photo. It can be empty. Returns an error text, or '' if all is fine
+function checkPhoto(photo) {
+  if (!photo) return '';
+  if (typeof photo !== 'string') return 'Photo is not valid';
+  if (!photo.startsWith('data:image/')) return 'Photo must be a picture';
+  if (photo.length > MAX_PHOTO_LENGTH) return 'Photo is too big';
   return '';
 }
 
@@ -38,6 +50,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: problem });
     }
 
+    const photoProblem = checkPhoto(photo);
+    if (photoProblem) {
+      return res.status(400).json({ error: photoProblem });
+    }
+
     const pkg = await Package.findById(packageId);
     if (!pkg) {
       return res.status(400).json({ error: 'Package not found' });
@@ -50,7 +67,7 @@ router.post('/', async (req, res) => {
     const member = await Member.create({
       name: String(name).trim(),
       phone: String(phone).trim(),
-      photo,
+      photo: photo || '',
       packageName: pkg.name,
       fee: pkg.fee,
       joinDate,

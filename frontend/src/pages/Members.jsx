@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import CameraCapture from '../CameraCapture'
 import {
   API,
   daysLeft,
@@ -8,6 +9,7 @@ import {
   statusLabel,
   formatDate,
   sendReminder,
+  resizePhoto,
 } from '../utils'
 
 const PAGE_SIZE = 10
@@ -26,6 +28,7 @@ function Members({ members, packages, loadMembers }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [packageId, setPackageId] = useState('')
+  const [photo, setPhoto] = useState('')
   const [message, setMessage] = useState('')
 
   const [editingId, setEditingId] = useState('')
@@ -78,6 +81,31 @@ function Members({ members, packages, loadMembers }) {
     setPage(0)
   }
 
+  function handlePhotoChange(e) {
+    const file = e.target.files[0]
+    if (!file) {
+      setPhoto('')
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setMessage('Error: Please choose a picture file')
+      setPhoto('')
+      return
+    }
+    setMessage('')
+    resizePhoto(file)
+      .then((text) => setPhoto(text))
+      .catch((err) => {
+        setPhoto('')
+        setMessage('Error: ' + err.message)
+      })
+  }
+
+  function handleCameraPhoto(text) {
+    setMessage('')
+    setPhoto(text)
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
     setMessage('')
@@ -103,6 +131,7 @@ function Members({ members, packages, loadMembers }) {
         name: name.trim(),
         phone: phone.trim(),
         packageId: selectedId,
+        photo: photo,
       }),
     })
       .then((res) => res.json())
@@ -113,6 +142,7 @@ function Members({ members, packages, loadMembers }) {
           setMessage('Member added')
           setName('')
           setPhone('')
+          setPhoto('')
           setShowForm(false)
           loadMembers()
         }
@@ -245,6 +275,30 @@ function Members({ members, packages, loadMembers }) {
                 Next due date
                 <input readOnly value={duePreview} />
               </label>
+
+              <div className="photo-field">
+                {photo ? (
+                  <img className="photo-preview" src={photo} alt="Preview" />
+                ) : (
+                  <div className="photo-empty">👤</div>
+                )}
+                <div className="photo-info">
+                  <span className="photo-title">Photo (optional)</span>
+                  <div className="photo-actions">
+                    <label className="file-btn">
+                      📁 Choose from PC
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handlePhotoChange}
+                      />
+                    </label>
+                    <CameraCapture onCapture={handleCameraPhoto} />
+                  </div>
+                </div>
+              </div>
+
               <button type="submit">Add Member</button>
             </div>
           </form>
@@ -292,7 +346,20 @@ function Members({ members, packages, loadMembers }) {
                           onChange={(e) => setEditName(e.target.value)}
                         />
                       ) : (
-                        m.name
+                        <div className="member-cell">
+                          {m.photo ? (
+                            <img
+                              className="member-photo"
+                              src={m.photo}
+                              alt={m.name}
+                            />
+                          ) : (
+                            <div className="member-photo placeholder">
+                              {m.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span>{m.name}</span>
+                        </div>
                       )}
                     </td>
                     <td>

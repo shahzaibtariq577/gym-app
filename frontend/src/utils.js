@@ -74,3 +74,32 @@ export function sendReminder(m) {
     'https://wa.me/' + whatsappNumber(m.phone) + '?text=' + encodeURIComponent(text)
   window.open(url, '_blank')
 }
+
+// Take a picture file, cut a square from the middle, make it 200x200,
+// and give back a small JPEG text that can be saved in the database
+export function resizePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('Could not read the photo'))
+    reader.onload = () => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('This file is not a picture'))
+      img.onload = () => {
+        const size = 200
+        const side = Math.min(img.width, img.height)
+        const sx = (img.width - side) / 2
+        const sy = (img.height - side) / 2
+
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size)
+
+        resolve(canvas.toDataURL('image/jpeg', 0.8))
+      }
+      img.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
