@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CameraCapture from '../CameraCapture'
+import PayBox from '../PayBox'
 import {
   API,
   daysLeft,
@@ -18,6 +19,7 @@ function MemberDetails({ members, loadMembers }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [showPay, setShowPay] = useState(false)
   const [bigPhoto, setBigPhoto] = useState(false)
   const [showPhotoEdit, setShowPhotoEdit] = useState(false)
   const [newPhoto, setNewPhoto] = useState('')
@@ -57,22 +59,18 @@ function MemberDetails({ members, loadMembers }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  function handleMarkPaid() {
-    if (!window.confirm('Mark ' + member.name + ' as paid?')) return
+  // Open the box that asks the amount and the payment method
+  function openPay() {
     setMessage('')
+    setShowPay(true)
+  }
 
-    fetch(API + '/members/' + id + '/pay', { method: 'PUT' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setMessage('Error: ' + data.error)
-        } else {
-          setMessage('Payment saved')
-          loadMembers()
-          loadPayments()
-        }
-      })
-      .catch(() => setMessage('Error: Could not reach the backend'))
+  // The box saved the payment: close it, show the green message, reload
+  function handlePaid(text) {
+    setShowPay(false)
+    setMessage(text)
+    loadMembers()
+    loadPayments()
   }
 
   // Undo the newest payment: the due date goes back to the date before it
@@ -175,6 +173,14 @@ function MemberDetails({ members, loadMembers }) {
 
   return (
     <div>
+      {showPay && (
+        <PayBox
+          member={member}
+          onClose={() => setShowPay(false)}
+          onPaid={handlePaid}
+        />
+      )}
+
       {bigPhoto && member.photo && (
         <div className="photo-modal" onClick={() => setBigPhoto(false)}>
           <img src={member.photo} alt={member.name} />
@@ -217,7 +223,7 @@ function MemberDetails({ members, loadMembers }) {
           >
             💬 Reminder
           </button>
-          <button title="Mark as paid" onClick={handleMarkPaid}>
+          <button title="Mark as paid" onClick={openPay}>
             ✅ Mark as paid
           </button>
           <button
@@ -336,6 +342,7 @@ function MemberDetails({ members, loadMembers }) {
                       <th>Date paid</th>
                       <th>Package</th>
                       <th>Amount</th>
+                      <th>Method</th>
                       <th>Due date before</th>
                       <th>Next due date</th>
                       <th>Action</th>
@@ -347,6 +354,7 @@ function MemberDetails({ members, loadMembers }) {
                         <td>{formatDate(p.paidOn)}</td>
                         <td>{p.packageName}</td>
                         <td>Rs {p.amount.toLocaleString()}</td>
+                        <td>{p.method || '-'}</td>
                         <td>{p.oldDueDate ? formatDate(p.oldDueDate) : '-'}</td>
                         <td>{p.newDueDate ? formatDate(p.newDueDate) : '-'}</td>
                         <td>

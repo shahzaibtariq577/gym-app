@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import PayBox from '../PayBox'
 import {
   API,
   DUE_SOON_DAYS,
@@ -15,6 +16,7 @@ function Dashboard({ gymName, members, loadMembers }) {
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
   const [bigMember, setBigMember] = useState(null)
+  const [payMember, setPayMember] = useState(null)
   const [message, setMessage] = useState('')
   const navigate = useNavigate()
 
@@ -62,26 +64,30 @@ function Dashboard({ gymName, members, loadMembers }) {
     year: 'numeric',
   })
 
-  function handleMarkPaid(id, memberName) {
-    if (!window.confirm('Mark ' + memberName + ' as paid?')) return
+  // Open the box that asks the amount and the payment method
+  function openPay(m) {
     setMessage('')
+    setPayMember(m)
+  }
 
-    fetch(API + '/members/' + id + '/pay', { method: 'PUT' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setMessage('Error: ' + data.error)
-        } else {
-          setMessage('Payment saved for ' + memberName)
-          loadMembers()
-          loadSummary()
-        }
-      })
-      .catch(() => setMessage('Error: Could not reach the backend'))
+  // The box saved the payment: close it, show the green message, reload
+  function handlePaid(text) {
+    setPayMember(null)
+    setMessage(text)
+    loadMembers()
+    loadSummary()
   }
 
   return (
     <div>
+      {payMember && (
+        <PayBox
+          member={payMember}
+          onClose={() => setPayMember(null)}
+          onPaid={handlePaid}
+        />
+      )}
+
       {bigMember && bigMember.photo && (
         <div className="photo-modal" onClick={() => setBigMember(null)}>
           <img src={bigMember.photo} alt={bigMember.name} />
@@ -260,7 +266,7 @@ function Dashboard({ gymName, members, loadMembers }) {
                         <button
                           className="icon-btn"
                           title="Mark as paid"
-                          onClick={() => handleMarkPaid(m._id, m.name)}
+                          onClick={() => openPay(m)}
                         >
                           ✅
                         </button>

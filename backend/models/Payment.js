@@ -6,6 +6,11 @@ const paymentSchema = new mongoose.Schema(
     memberName: { type: String, required: true },
     packageName: { type: String, required: true },
     amount: { type: Number, required: true },
+    method: {
+      type: String,
+      enum: ['Cash', 'JazzCash', 'Easypaisa', 'Bank'],
+      default: 'Cash',
+    },
     paidOn: { type: Date, default: Date.now },
     oldDueDate: { type: Date },
     newDueDate: { type: Date },

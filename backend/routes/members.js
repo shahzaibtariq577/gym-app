@@ -8,6 +8,10 @@ const router = express.Router();
 // Biggest photo text we accept (a 200x200 photo is about 10,000 to 20,000)
 const MAX_PHOTO_LENGTH = 100000;
 
+// Ways a member can pay, and the biggest amount we accept
+const PAYMENT_METHODS = ['Cash', 'JazzCash', 'Easypaisa', 'Bank'];
+const MAX_PAYMENT = 1000000;
+
 // Check name and phone. Returns an error text, or '' if all is fine
 function checkNameAndPhone(name, phone) {
   const cleanName = String(name || '').trim();
@@ -190,11 +194,28 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Mark a member as paid (also saves a payment record)
+// The screen may send amount (default: the member's fee) and method (default: Cash)
 router.put('/:id/pay', async (req, res) => {
   try {
+    const body = req.body || {};
+
+    const method = body.method === undefined ? 'Cash' : body.method;
+    if (!PAYMENT_METHODS.includes(method)) {
+      return res.status(400).json({
+        error: 'Payment method must be Cash, JazzCash, Easypaisa or Bank',
+      });
+    }
+
     const member = await Member.findById(req.params.id);
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
+    }
+
+    const amount = body.amount === undefined ? member.fee : Number(body.amount);
+    if (!(amount > 0) || amount > MAX_PAYMENT) {
+      return res.status(400).json({
+        error: 'Amount must be more than 0 and not more than ' + MAX_PAYMENT,
+      });
     }
 
     const pkg = await Package.findOne({ name: member.packageName });
@@ -214,7 +235,8 @@ router.put('/:id/pay', async (req, res) => {
       memberId: member._id,
       memberName: member.name,
       packageName: member.packageName,
-      amount: member.fee,
+      amount: amount,
+      method: method,
       paidOn: today,
       oldDueDate: oldDueDate,
       newDueDate: newDueDate,

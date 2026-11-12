@@ -25,7 +25,7 @@ function PaymentHistory() {
   }, [])
 
   const filtered = payments.filter((p) =>
-    (p.memberName + ' ' + p.packageName)
+    (p.memberName + ' ' + p.packageName + ' ' + (p.method || ''))
       .toLowerCase()
       .includes(search.toLowerCase())
   )
@@ -38,7 +38,7 @@ function PaymentHistory() {
 
       <div className="toolbar">
         <input
-          placeholder="🔍 Search by member or package..."
+          placeholder="🔍 Search by member, package or method..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -62,6 +62,7 @@ function PaymentHistory() {
                   <th>Member</th>
                   <th>Package</th>
                   <th>Amount</th>
+                  <th>Method</th>
                   <th>Due date before</th>
                   <th>Next due date</th>
                 </tr>
@@ -73,6 +74,7 @@ function PaymentHistory() {
                     <td>{p.memberName}</td>
                     <td>{p.packageName}</td>
                     <td>Rs {p.amount.toLocaleString()}</td>
+                    <td>{p.method || '-'}</td>
                     <td>{p.oldDueDate ? formatDate(p.oldDueDate) : '-'}</td>
                     <td>{p.newDueDate ? formatDate(p.newDueDate) : '-'}</td>
                   </tr>
