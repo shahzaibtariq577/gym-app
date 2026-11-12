@@ -7,10 +7,12 @@ import Members from './pages/Members'
 import Packages from './pages/Packages'
 import PaymentHistory from './pages/PaymentHistory'
 import MemberDetails from './pages/Memberdetails'
+import Login from './pages/Login'
+import { getToken, clearToken } from './auth'
 
 const LOAD_ERROR = 'Could not load data. Is the backend running?'
 
-function Layout() {
+function Layout({ onLogout }) {
   const [members, setMembers] = useState([])
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -119,6 +121,14 @@ function Layout() {
           </NavLink>
         </nav>
 
+        <button
+          className="link-btn"
+          style={{ margin: '12px 14px 0', alignSelf: 'flex-start' }}
+          onClick={onLogout}
+        >
+          Log out
+        </button>
+
         <div className="side-footer">
           <div className="avatar">👤</div>
           <div>
@@ -181,9 +191,30 @@ function Layout() {
 }
 
 function App() {
+  const [loggedIn, setLoggedIn] = useState(() => getToken() !== '')
+
+  // auth.js sends this event when the backend says "please log in"
+  // (for example when the login has expired)
+  useEffect(() => {
+    function onLogout() {
+      setLoggedIn(false)
+    }
+    window.addEventListener('gym-logout', onLogout)
+    return () => window.removeEventListener('gym-logout', onLogout)
+  }, [])
+
+  function handleLogout() {
+    clearToken()
+    setLoggedIn(false)
+  }
+
+  if (!loggedIn) {
+    return <Login onLoggedIn={() => setLoggedIn(true)} />
+  }
+
   return (
     <BrowserRouter>
-      <Layout />
+      <Layout onLogout={handleLogout} />
     </BrowserRouter>
   )
 }

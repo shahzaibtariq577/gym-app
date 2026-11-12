@@ -12,6 +12,9 @@ const MAX_PHOTO_LENGTH = 100000;
 const PAYMENT_METHODS = ['Cash', 'JazzCash', 'Easypaisa', 'Bank'];
 const MAX_PAYMENT = 1000000;
 
+// Biggest bank slip picture text we accept
+const MAX_SLIP_LENGTH = 700000;
+
 // Check name and phone. Returns an error text, or '' if all is fine
 function checkNameAndPhone(name, phone) {
   const cleanName = String(name || '').trim();
@@ -34,6 +37,15 @@ function checkPhoto(photo) {
   return '';
 }
 
+// Check the bank slip picture. It can be empty. Returns an error text, or '' if fine
+function checkSlip(slip) {
+  if (!slip) return '';
+  if (typeof slip !== 'string') return 'Slip is not valid';
+  if (!slip.startsWith('data:image/')) return 'Slip must be a picture';
+  if (slip.length > MAX_SLIP_LENGTH) return 'Slip picture is too big';
+  return '';
+}
+
 // Save a member together with a payment, safely.
 // The payment is saved first. If saving the member fails,
 // the payment is removed again, so the two always match.
@@ -45,6 +57,7 @@ async function saveMemberWithPayment(member, paymentData) {
     await Payment.findByIdAndDelete(payment._id);
     throw err;
   }
+  return payment;
 }
 
 // Show all members
@@ -150,6 +163,7 @@ router.put('/:id', async (req, res) => {
             memberName: member.name,
             packageName: pkg.name,
             amount: pkg.fee,
+            feeAtPayment: pkg.fee,
             paidOn: today,
             oldDueDate: oldDueDate,
             newDueDate: newDueDate,
@@ -206,6 +220,12 @@ router.put('/:id/pay', async (req, res) => {
       });
     }
 
+    const slip = body.slipImage || '';
+    const slipProblem = checkSlip(slip);
+    if (slipProblem) {
+      return res.status(400).json({ error: slipProblem });
+    }
+
     const member = await Member.findById(req.params.id);
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
@@ -231,18 +251,24 @@ router.put('/:id/pay', async (req, res) => {
 
     member.nextDueDate = newDueDate;
 
-    await saveMemberWithPayment(member, {
+    const savedPayment = await saveMemberWithPayment(member, {
       memberId: member._id,
       memberName: member.name,
       packageName: member.packageName,
       amount: amount,
       method: method,
+      feeAtPayment: member.fee,
+      slipImage: slip,
+      hasSlip: slip !== '',
       paidOn: today,
       oldDueDate: oldDueDate,
       newDueDate: newDueDate,
     });
 
-    res.json(member);
+    // Send back the member and the new payment (without the big slip picture)
+    const paymentInfo = savedPayment.toObject();
+    delete paymentInfo.slipImage;
+    res.json({ member: member, payment: paymentInfo });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

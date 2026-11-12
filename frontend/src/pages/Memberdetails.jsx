@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CameraCapture from '../CameraCapture'
 import PayBox from '../PayBox'
+import Slip from '../Slip'
 import {
   API,
   daysLeft,
@@ -20,6 +21,7 @@ function MemberDetails({ members, loadMembers }) {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [showPay, setShowPay] = useState(false)
+  const [slipPayment, setSlipPayment] = useState(null)
   const [bigPhoto, setBigPhoto] = useState(false)
   const [showPhotoEdit, setShowPhotoEdit] = useState(false)
   const [newPhoto, setNewPhoto] = useState('')
@@ -173,6 +175,10 @@ function MemberDetails({ members, loadMembers }) {
 
   return (
     <div>
+      {slipPayment && (
+        <Slip payment={slipPayment} onClose={() => setSlipPayment(null)} />
+      )}
+
       {showPay && (
         <PayBox
           member={member}
@@ -345,6 +351,7 @@ function MemberDetails({ members, loadMembers }) {
                       <th>Method</th>
                       <th>Due date before</th>
                       <th>Next due date</th>
+                      <th>Slip</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -357,6 +364,16 @@ function MemberDetails({ members, loadMembers }) {
                         <td>{p.method || '-'}</td>
                         <td>{p.oldDueDate ? formatDate(p.oldDueDate) : '-'}</td>
                         <td>{p.newDueDate ? formatDate(p.newDueDate) : '-'}</td>
+                        <td>
+                          <button
+                            className="grey icon-btn"
+                            title="View slip"
+                            onClick={() => setSlipPayment(p)}
+                          >
+                            🧾
+                          </button>
+                          {p.hasSlip ? ' 📎' : ''}
+                        </td>
                         <td>
                           {index === 0 ? (
                             <button

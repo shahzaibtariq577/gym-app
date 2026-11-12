@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { API, formatDate } from '../utils'
+import Slip from '../Slip'
 
 function PaymentHistory() {
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [slipPayment, setSlipPayment] = useState(null)
 
   useEffect(() => {
     fetch(API + '/payments')
@@ -34,6 +36,10 @@ function PaymentHistory() {
 
   return (
     <div>
+      {slipPayment && (
+        <Slip payment={slipPayment} onClose={() => setSlipPayment(null)} />
+      )}
+
       <h1 className="page-title">Payment History</h1>
 
       <div className="toolbar">
@@ -65,6 +71,7 @@ function PaymentHistory() {
                   <th>Method</th>
                   <th>Due date before</th>
                   <th>Next due date</th>
+                  <th>Slip</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,6 +84,16 @@ function PaymentHistory() {
                     <td>{p.method || '-'}</td>
                     <td>{p.oldDueDate ? formatDate(p.oldDueDate) : '-'}</td>
                     <td>{p.newDueDate ? formatDate(p.newDueDate) : '-'}</td>
+                    <td>
+                      <button
+                        className="grey icon-btn"
+                        title="View slip"
+                        onClick={() => setSlipPayment(p)}
+                      >
+                        🧾
+                      </button>
+                      {p.hasSlip ? ' 📎' : ''}
+                    </td>
                   </tr>
                 ))}
               </tbody>

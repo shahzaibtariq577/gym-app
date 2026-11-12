@@ -10,7 +10,10 @@ router.get('/', async (req, res) => {
     const filter = {};
     if (req.query.memberId) filter.memberId = req.query.memberId;
 
-    const payments = await Payment.find(filter).sort({ paidOn: -1 });
+    // Do not send the big slip pictures in the list
+    const payments = await Payment.find(filter)
+      .select('-slipImage')
+      .sort({ paidOn: -1 });
     res.json(payments);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -26,7 +29,7 @@ router.get('/summary', async (req, res) => {
 
     const payments = await Payment.find({
       paidOn: { $gte: start, $lt: end },
-    });
+    }).select('amount');
 
     const total = payments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -40,6 +43,23 @@ router.get('/summary', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Get the bank slip picture of one payment
+router.get('/:id/slip', async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.id).select(
+      'slipImage'
+    );
+    if (!payment || !payment.slipImage) {
+      return res
+        .status(404)
+        .json({ error: 'No bank slip saved for this payment' });
+    }
+    res.json({ slip: payment.slipImage });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
