@@ -15,6 +15,7 @@ function Dashboard({ gymName, members, loadMembers }) {
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
   const [bigMember, setBigMember] = useState(null)
+  const [message, setMessage] = useState('')
   const navigate = useNavigate()
 
   function loadSummary() {
@@ -63,13 +64,20 @@ function Dashboard({ gymName, members, loadMembers }) {
 
   function handleMarkPaid(id, memberName) {
     if (!window.confirm('Mark ' + memberName + ' as paid?')) return
+    setMessage('')
 
     fetch(API + '/members/' + id + '/pay', { method: 'PUT' })
       .then((res) => res.json())
-      .then(() => {
-        loadMembers()
-        loadSummary()
+      .then((data) => {
+        if (data.error) {
+          setMessage('Error: ' + data.error)
+        } else {
+          setMessage('Payment saved for ' + memberName)
+          loadMembers()
+          loadSummary()
+        }
       })
+      .catch(() => setMessage('Error: Could not reach the backend'))
   }
 
   return (
@@ -175,6 +183,12 @@ function Dashboard({ gymName, members, loadMembers }) {
         <h2>
           📅 Late and due in {DUE_SOON_DAYS} days or less ({urgent.length})
         </h2>
+
+        {message && (
+          <p className={message.startsWith('Error') ? 'msg-error' : 'msg-ok'}>
+            {message}
+          </p>
+        )}
 
         {urgent.length === 0 && <p>No urgent fees. Everything is fine.</p>}
 

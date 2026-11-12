@@ -240,10 +240,20 @@ function Members({ members, packages, loadMembers }) {
 
   function handleMarkPaid(id, memberName) {
     if (!window.confirm('Mark ' + memberName + ' as paid?')) return
+    setMessage('')
+    setEditMessage('')
 
     fetch(API + '/members/' + id + '/pay', { method: 'PUT' })
       .then((res) => res.json())
-      .then(() => loadMembers())
+      .then((data) => {
+        if (data.error) {
+          setMessage('Error: ' + data.error)
+        } else {
+          setMessage('Payment saved for ' + memberName)
+          loadMembers()
+        }
+      })
+      .catch(() => setMessage('Error: Could not reach the backend'))
   }
 
   function handleDeleteMember(id, memberName) {
