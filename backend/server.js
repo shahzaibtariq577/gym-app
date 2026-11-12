@@ -26,6 +26,8 @@ const packageRoutes = require('./routes/packages');
 app.use('/api/packages', requireLogin, packageRoutes);
 const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', requireLogin, paymentRoutes);
+const settingsRoutes = require('./routes/settings');
+app.use('/api/settings', requireLogin, settingsRoutes);
 
 app.get('/', (req, res) => {
   res.send('Gym app backend is running');

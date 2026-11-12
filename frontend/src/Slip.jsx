@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { API, formatDate } from './utils'
+import SettingsContext from './SettingsContext'
 
 // When printing, show only the receipt (not the rest of the page)
 const PRINT_CSS = `
@@ -39,7 +40,7 @@ function Row({ label, value, strong }) {
 // (change it with "Edit name" in the side menu).
 // If the payment has a bank slip picture, the owner can open it too.
 function Slip({ payment, onClose }) {
-  const gymName = localStorage.getItem('gymName') || 'My Gym'
+  const { gymName, gymPhone, gymAddress } = useContext(SettingsContext)
   const [bankSlip, setBankSlip] = useState('')
   const [showBank, setShowBank] = useState(false)
   const [loadingBank, setLoadingBank] = useState(false)
@@ -125,6 +126,11 @@ function Slip({ payment, onClose }) {
             <div style={{ fontSize: '22px', fontWeight: 800, color: '#3730a3' }}>
               {gymName}
             </div>
+            {(gymAddress || gymPhone) && (
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                {[gymAddress, gymPhone].filter(Boolean).join(' | ')}
+              </div>
+            )}
             <div
               style={{ fontSize: '13px', color: '#6b7280', letterSpacing: '1px' }}
             >

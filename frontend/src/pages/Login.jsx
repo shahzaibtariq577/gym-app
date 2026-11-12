@@ -1,15 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { API } from '../utils'
 import { setToken } from '../auth'
 
 // The login screen. It is shown instead of the app until the owner logs in.
 function Login({ onLoggedIn }) {
-  const gymName = localStorage.getItem('gymName') || 'My Gym'
+  const [gymName, setGymName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  // The gym name comes from the server (open door), so every device shows the same name
+  useEffect(() => {
+    fetch(API + '/auth/gym')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.gymName) setGymName(data.gymName)
+      })
+      .catch(() => {})
+  }, [])
 
   function handleSubmit(e) {
     e.preventDefault()

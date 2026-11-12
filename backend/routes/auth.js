@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Owner = require('../models/Owner');
+const Setting = require('../models/Setting');
 
 const router = express.Router();
 
@@ -67,6 +68,16 @@ router.post('/login', async (req, res) => {
     );
 
     res.json({ token: token, username: owner.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// The gym name only, open to everyone: the login screen shows it before login
+router.get('/gym', async (req, res) => {
+  try {
+    const setting = await Setting.findOne();
+    res.json({ gymName: setting ? setting.gymName : 'My Gym' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

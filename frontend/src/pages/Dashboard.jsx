@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import PayBox from '../PayBox'
+import SettingsContext from '../SettingsContext'
 import {
   API,
   DUE_SOON_DAYS,
@@ -12,7 +13,8 @@ import {
   sendReminder,
 } from '../utils'
 
-function Dashboard({ gymName, members, loadMembers }) {
+function Dashboard({ members, loadMembers }) {
+  const { gymName, ownerName, ownerPhoto } = useContext(SettingsContext)
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
   const [bigMember, setBigMember] = useState(null)
@@ -109,9 +111,43 @@ function Dashboard({ gymName, members, loadMembers }) {
         <span className="date-pill">📅 {today}</span>
       </div>
 
-      <div className="welcome">
-        <h1>Welcome to {gymName} 👋</h1>
-        <p>Keep going! A healthier you is a stronger you.</p>
+      <div
+        className="welcome"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '18px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Link
+          to="/settings"
+          title="Open settings"
+          style={{ textDecoration: 'none' }}
+        >
+          {ownerPhoto ? (
+            <img
+              className="details-photo"
+              src={ownerPhoto}
+              alt={ownerName || 'Owner'}
+              style={{ width: '76px', height: '76px' }}
+            />
+          ) : (
+            <div
+              className="details-photo placeholder"
+              style={{ width: '76px', height: '76px', fontSize: '30px' }}
+            >
+              {ownerName ? ownerName.charAt(0).toUpperCase() : '👤'}
+            </div>
+          )}
+        </Link>
+        <div>
+          <h1>Welcome to {gymName} 👋</h1>
+          <p>
+            {ownerName ? 'Hello, ' + ownerName + '. ' : ''}Keep going! A
+            healthier you is a stronger you.
+          </p>
+        </div>
       </div>
 
       <div className="summary">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
 import './App.css'
 import { API } from './utils'
 import Dashboard from './pages/Dashboard'
@@ -8,6 +8,8 @@ import Packages from './pages/Packages'
 import PaymentHistory from './pages/PaymentHistory'
 import MemberDetails from './pages/Memberdetails'
 import Login from './pages/Login'
+import Settings from './pages/Settings'
+import SettingsContext from './SettingsContext'
 import { getToken, clearToken } from './auth'
 
 const LOAD_ERROR = 'Could not load data. Is the backend running?'
@@ -17,11 +19,14 @@ function Layout({ onLogout }) {
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [gymName, setGymName] = useState(
-    () => localStorage.getItem('gymName') || 'My Gym'
-  )
-  const [editing, setEditing] = useState(false)
-  const [nameInput, setNameInput] = useState('')
+  const [settings, setSettings] = useState({
+    gymName: 'My Gym',
+    gymPhone: '',
+    gymAddress: '',
+    ownerName: '',
+    ownerPhoto: '',
+    username: '',
+  })
 
   function loadMembers() {
     return fetch(API + '/members')
@@ -51,59 +56,54 @@ function Layout({ onLogout }) {
       .catch(() => setLoadError(LOAD_ERROR))
   }
 
+  function loadSettings() {
+    return fetch(API + '/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setLoadError(LOAD_ERROR)
+          return
+        }
+        setSettings(data)
+
+        // One time: move the gym name this browser saved before into the database
+        const old = localStorage.getItem('gymName')
+        if (old && old !== 'My Gym' && data.gymName === 'My Gym') {
+          return fetch(API + '/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gymName: old }),
+          })
+            .then((res) => res.json())
+            .then((saved) => {
+              if (!saved.error) {
+                setSettings(saved)
+                localStorage.removeItem('gymName')
+              }
+            })
+        }
+        if (old) localStorage.removeItem('gymName')
+      })
+      .catch(() => setLoadError(LOAD_ERROR))
+  }
+
   useEffect(() => {
-    Promise.all([loadMembers(), loadPackages()]).then(() => setLoading(false))
+    Promise.all([loadMembers(), loadPackages(), loadSettings()]).then(() =>
+      setLoading(false)
+    )
   }, [])
-
-  function startEdit() {
-    setNameInput(gymName)
-    setEditing(true)
-  }
-
-  function saveName(e) {
-    e.preventDefault()
-    const clean = nameInput.trim()
-    if (clean) {
-      setGymName(clean)
-      localStorage.setItem('gymName', clean)
-    }
-    setEditing(false)
-  }
 
   function navClass({ isActive }) {
     return isActive ? 'active' : ''
   }
 
   return (
+    <SettingsContext.Provider value={{ ...settings, setSettings }}>
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-logo">🏋️</div>
-          {editing ? (
-            <form onSubmit={saveName}>
-              <input
-                autoFocus
-                placeholder="Your gym name"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-              />
-              <button type="submit">Save</button>
-              <button
-                type="button"
-                className="grey"
-                onClick={() => setEditing(false)}
-              >
-                Cancel
-              </button>
-            </form>
-          ) : (
-            <>
-              <div className="brand-name">{gymName}</div>
-              <button className="link-btn" onClick={startEdit}>
-                Edit name
-              </button>
-            </>
-          )}
+          <div className="brand-name">{settings.gymName}</div>
         </div>
 
         <nav className="side-nav">
@@ -119,6 +119,9 @@ function Layout({ onLogout }) {
           <NavLink to="/payments" className={navClass}>
             🧾 Payment History
           </NavLink>
+          <NavLink to="/settings" className={navClass}>
+            ⚙️ Settings
+          </NavLink>
         </nav>
 
         <button
@@ -130,11 +133,32 @@ function Layout({ onLogout }) {
         </button>
 
         <div className="side-footer">
-          <div className="avatar">👤</div>
-          <div>
-            <div>Gym Owner</div>
-            <small>Admin</small>
-          </div>
+          <Link
+            to="/settings"
+            title="Open settings"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              color: 'inherit',
+              textDecoration: 'none',
+            }}
+          >
+            {settings.ownerPhoto ? (
+              <img
+                className="avatar"
+                src={settings.ownerPhoto}
+                alt="Owner"
+                style={{ objectFit: 'cover' }}
+              />
+            ) : (
+              <div className="avatar">👤</div>
+            )}
+            <div>
+              <div>{settings.ownerName || 'Gym Owner'}</div>
+              <small>Admin</small>
+            </div>
+          </Link>
         </div>
       </aside>
 
@@ -148,11 +172,7 @@ function Layout({ onLogout }) {
             <Route
               path="/"
               element={
-                <Dashboard
-                  gymName={gymName}
-                  members={members}
-                  loadMembers={loadMembers}
-                />
+                <Dashboard members={members} loadMembers={loadMembers} />
               }
             />
             <Route
@@ -183,10 +203,12 @@ function Layout({ onLogout }) {
               }
             />
             <Route path="/payments" element={<PaymentHistory />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         )}
       </main>
     </div>
+    </SettingsContext.Provider>
   )
 }
 
