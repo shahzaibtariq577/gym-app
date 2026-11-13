@@ -16,6 +16,10 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 ![PaymentHistory](docs/Paymenthistory.png)
 ![MobileScreen](docs/Mobilescreen1.png)
 ![MobileScreen](docs/mobilescreen2.png)
+![Login](docs/Login.png)
+![Settings](docs/Settings.png)
+![Expenses](docs/Expenses.png)
+![ExpensesInsights](docs/Expensesinsights.png)
 
 
 ## Features
@@ -39,6 +43,7 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - Welcome card with the owner's name and photo
 - Four clickable cards: Late, Due soon, OK and Total members (each opens the Members page with the right filter)
 - "Collected this month" card with the total and the number of payments
+- "Profit this month" card (earned minus spent, red and called Loss when spent is more than earned) with a button to the Expenses page
 - List of Late and Due soon members with their round photo and quick buttons: send WhatsApp reminder and mark as paid
 - Click a photo for a big popup, or click a name to open the member's details page
 
@@ -68,6 +73,15 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - All payments, newest first, with search and a running total
 - Each payment shows its method, and the bank slip picture if one was attached
 - Payment slip with the gym name, phone and address from Settings
+
+**Expenses and insights**
+- Add an expense with a date, a category (Electricity, Rent, Staff salary, Equipment repair, New equipment, Internet, Cleaning or Other), an amount and an optional note
+- Optional picture of the bill (saved small, like the bank slip, and opened only when you click it)
+- Edit and delete an expense
+- Month buttons (Previous and Next) to see any month, with the list of that month
+- Earned (all payments of the month), Spent (all expenses) and Profit (earned minus spent)
+- Spending by category with a bar and a percentage for each category
+- Last 6 months chart: earned, spent and the profit of each month, so you can see if a cost like electricity is going up
 
 **Other**
 - Works on phone screens (compact tables and icon buttons)
@@ -100,8 +114,8 @@ gym-app/
   backend/
     server.js            starts Express and connects to MongoDB
     seed.js              creates the first owner (run once on a new database)
-    models/              Member.js, Package.js, Payment.js, Owner.js, Setting.js
-    routes/              members.js, packages.js, payments.js, auth.js, settings.js
+    models/              Member.js, Package.js, Payment.js, Owner.js, Setting.js, Expense.js
+    routes/              members.js, packages.js, payments.js, auth.js, settings.js, expenses.js
   frontend/
     src/
       main.jsx           starts React
@@ -109,8 +123,9 @@ gym-app/
       utils.js           API address, status rule, dates, WhatsApp, photo resize
       CameraCapture.jsx  live camera photo box
       App.css            styles
+      SettingsContext    gym and owner settings shared by all pages
       pages/             Login, Dashboard, Members, MemberDetails, Packages,
-                         PaymentHistory, Settings
+                         PaymentHistory, Settings, Expenses
   docs/                  screenshots
 ```
 
@@ -135,6 +150,14 @@ Everything needs a login token (sent with every request) except the two open add
 | DELETE | `/packages/:id` | Delete a package (refused if members use it) |
 | GET | `/payments` | All payments, newest first. Use `?memberId=...` for one member |
 | GET | `/payments/summary` | Total collected this month |
+| GET | `/settings` | The gym name, phone, address, owner name and owner photo |
+| PUT | `/settings` | Save the gym and owner profile (changing the username or password also needs the current password) |
+| GET | `/expenses?month=2026-11` | Expenses of one month, newest first (default: this month). No bill pictures inside, only `hasBill` |
+| GET | `/expenses/insights?month=2026-11` | Earned, spent and profit of the month, spending by category, and the last 6 months |
+| GET | `/expenses/:id/bill` | The bill picture of one expense (404 if there is none) |
+| POST | `/expenses` | Add an expense. Send `date` (2026-11-30), `category`, `amount`, optional `note` and optional `billImage` |
+| PUT | `/expenses/:id` | Edit an expense (only the fields sent). `billImage`: leave it out to keep the picture, send an empty text to remove it |
+| DELETE | `/expenses/:id` | Delete an expense |
 
 Without a valid token, these addresses answer `401` with `{"error":"Please log in"}`.
 
@@ -208,6 +231,8 @@ The backend does not reload by itself. After any change in the backend, stop it 
 - **A member keeps its own copy of the package name and fee.** If the owner changes a package price later, old members and old payments do not change.
 - **Photos are saved as small text (200x200 JPEG).** This is simple for a small gym. For thousands of members, files in cloud storage would be better.
 - **Mark as paid does not lose days.** If the member is not late yet, the new period starts from the old due date, not from today.
+- **One door does the month maths.** `GET /expenses/insights` reads the payments and the expenses together, adds them by month and sends a small answer, so the screen does no maths and `payments.js` stays as it was.
+- **Bill pictures work like bank slips.** The list sends only `hasBill`, and the picture is fetched when the owner opens it, so the lists stay fast.
 - **One gym, one database, one owner.** The first owner is made with `seed.js`.
 
 ## Known limits and ideas for later
@@ -218,7 +243,7 @@ The backend does not reload by itself. After any change in the backend, stop it 
 - WhatsApp receipt after a payment
 - Balance tracking for part payments
 - Month filter and export in Payment History
-- Expenses page with profit for the month and a "Profit this month" card on the Dashboard
+- Expenses that repeat every month (rent, internet) filled in by themselves
 - Reminders are sent by the owner with one click (not automatic)
 - Phone numbers that start with 0 are treated as Pakistan numbers (+92) for WhatsApp
 - Move pictures out of the database into file storage
