@@ -1,4 +1,6 @@
-export const API = 'http://localhost:5000/api'
+// The API address comes from the setting VITE_API_URL.
+// If the setting is missing (on your own computer), it uses localhost.
+export const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 // A member is "Due soon" when the fee is due in this many days or less
 export const DUE_SOON_DAYS = 2
