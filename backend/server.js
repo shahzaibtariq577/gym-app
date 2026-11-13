@@ -28,6 +28,8 @@ const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', requireLogin, paymentRoutes);
 const settingsRoutes = require('./routes/settings');
 app.use('/api/settings', requireLogin, settingsRoutes);
+const expenseRoutes = require('./routes/expenses');
+app.use('/api/expenses', requireLogin, expenseRoutes);
 
 app.get('/', (req, res) => {
   res.send('Gym app backend is running');

@@ -17,6 +17,7 @@ function Dashboard({ members, loadMembers }) {
   const { gymName, ownerName, ownerPhoto } = useContext(SettingsContext)
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
+  const [insights, setInsights] = useState(null)
   const [bigMember, setBigMember] = useState(null)
   const [payMember, setPayMember] = useState(null)
   const [message, setMessage] = useState('')
@@ -31,8 +32,19 @@ function Dashboard({ members, loadMembers }) {
       .catch(() => {})
   }
 
+  // Earned, spent and profit of this month
+  function loadInsights() {
+    fetch(API + '/expenses/insights')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error) setInsights(data)
+      })
+      .catch(() => {})
+  }
+
   useEffect(() => {
     loadSummary()
+    loadInsights()
   }, [])
 
   // Close the big photo with the Escape key
@@ -78,6 +90,7 @@ function Dashboard({ members, loadMembers }) {
     setMessage(text)
     loadMembers()
     loadSummary()
+    loadInsights()
   }
 
   return (
@@ -220,6 +233,38 @@ function Dashboard({ members, loadMembers }) {
           View history →
         </button>
       </div>
+
+      {insights && (
+        <div
+          className="collect"
+          style={insights.profit < 0 ? { borderColor: '#dc2626' } : {}}
+        >
+          <div
+            className="collect-icon"
+            style={insights.profit < 0 ? { background: '#dc2626' } : {}}
+          >
+            {insights.profit < 0 ? '📉' : '📈'}
+          </div>
+          <div>
+            <div className="collect-amount">
+              {insights.profit < 0 ? '-' : ''}Rs{' '}
+              {Math.abs(insights.profit).toLocaleString()}
+            </div>
+            <div className="collect-label">
+              {insights.profit < 0 ? 'Loss' : 'Profit'} this month (earned Rs{' '}
+              {insights.earned.toLocaleString()}, spent Rs{' '}
+              {insights.spent.toLocaleString()})
+            </div>
+          </div>
+          <button
+            className="grey"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => navigate('/expenses')}
+          >
+            View expenses →
+          </button>
+        </div>
+      )}
 
       <div className="card">
         <h2>
