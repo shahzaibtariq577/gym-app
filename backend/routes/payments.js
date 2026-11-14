@@ -4,13 +4,11 @@ const Member = require('../models/Member');
 
 const router = express.Router();
 
-// Show payments (newest first). Use ?memberId=... for one member
 router.get('/', async (req, res) => {
   try {
     const filter = {};
     if (req.query.memberId) filter.memberId = req.query.memberId;
 
-    // Do not send the big slip pictures in the list
     const payments = await Payment.find(filter)
       .select('-slipImage')
       .sort({ paidOn: -1 });
@@ -20,7 +18,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Total collected this month
 router.get('/summary', async (req, res) => {
   try {
     const now = new Date();
@@ -46,7 +43,6 @@ router.get('/summary', async (req, res) => {
   }
 });
 
-// Get the bank slip picture of one payment
 router.get('/:id/slip', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id).select(
@@ -63,8 +59,6 @@ router.get('/:id/slip', async (req, res) => {
   }
 });
 
-// Undo a payment. Only the newest payment of a member can be undone.
-// The member's due date goes back to the date before that payment.
 router.delete('/:id', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id);
@@ -74,8 +68,6 @@ router.delete('/:id', async (req, res) => {
 
     const member = await Member.findById(payment.memberId);
 
-    // If the member still exists, check this is the newest payment
-    // and put the old due date back
     if (member) {
       const newest = await Payment.findOne({ memberId: payment.memberId })
         .sort({ paidOn: -1, _id: -1 });
@@ -88,8 +80,9 @@ router.delete('/:id', async (req, res) => {
 
       if (payment.oldDueDate) {
         member.nextDueDate = payment.oldDueDate;
-        await member.save();
       }
+      member.balance = payment.balanceBefore || 0;
+      await member.save();
     }
 
     await Payment.findByIdAndDelete(payment._id);

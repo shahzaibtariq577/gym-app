@@ -5,17 +5,13 @@ const Payment = require('../models/Payment');
 
 const router = express.Router();
 
-// Biggest photo text we accept (a 200x200 photo is about 10,000 to 20,000)
 const MAX_PHOTO_LENGTH = 100000;
 
-// Ways a member can pay, and the biggest amount we accept
 const PAYMENT_METHODS = ['Cash', 'JazzCash', 'Easypaisa', 'Bank'];
 const MAX_PAYMENT = 1000000;
 
-// Biggest bank slip picture text we accept
 const MAX_SLIP_LENGTH = 700000;
 
-// Check name and phone. Returns an error text, or '' if all is fine
 function checkNameAndPhone(name, phone) {
   const cleanName = String(name || '').trim();
   const digits = String(phone || '').replace(/\D/g, '');
@@ -28,7 +24,6 @@ function checkNameAndPhone(name, phone) {
   return '';
 }
 
-// Check the photo. It can be empty. Returns an error text, or '' if all is fine
 function checkPhoto(photo) {
   if (!photo) return '';
   if (typeof photo !== 'string') return 'Photo is not valid';
@@ -37,7 +32,6 @@ function checkPhoto(photo) {
   return '';
 }
 
-// Check the bank slip picture. It can be empty. Returns an error text, or '' if fine
 function checkSlip(slip) {
   if (!slip) return '';
   if (typeof slip !== 'string') return 'Slip is not valid';
@@ -46,9 +40,6 @@ function checkSlip(slip) {
   return '';
 }
 
-// Save a member together with a payment, safely.
-// The payment is saved first. If saving the member fails,
-// the payment is removed again, so the two always match.
 async function saveMemberWithPayment(member, paymentData) {
   const payment = await Payment.create(paymentData);
   try {
@@ -60,7 +51,6 @@ async function saveMemberWithPayment(member, paymentData) {
   return payment;
 }
 
-// Show all members
 router.get('/', async (req, res) => {
   try {
     const members = await Member.find().sort({ nextDueDate: 1 });
@@ -70,7 +60,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add a new member
 router.post('/', async (req, res) => {
   try {
     const { name, phone, photo, packageId } = req.body;
@@ -110,7 +99,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Edit a member (name, phone, photo, package, due date, or start a new package today)
 router.put('/:id', async (req, res) => {
   try {
     const { name, phone, photo, packageId, nextDueDate, startToday } = req.body;
@@ -128,7 +116,6 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: problem });
     }
 
-    // New photo (an empty photo removes the picture)
     if (photo !== undefined) {
       const photoProblem = checkPhoto(photo);
       if (photoProblem) {
@@ -137,20 +124,24 @@ router.put('/:id', async (req, res) => {
       member.photo = photo || '';
     }
 
-    // Filled only when the member starts a new package today
     let newPayment = null;
 
-    // New package: change the name and the fee.
     if (packageId) {
       const pkg = await Package.findById(packageId);
       if (!pkg) {
         return res.status(400).json({ error: 'Package not found' });
       }
       if (pkg.name !== member.packageName) {
+        if (startToday === true && member.balance > 0) {
+          return res.status(400).json({
+            error:
+              'Collect the remaining Rs ' + member.balance + ' first, then start the new package',
+          });
+        }
+
         member.packageName = pkg.name;
         member.fee = pkg.fee;
 
-        // Start the new package today: new due date and a payment record
         if (startToday === true) {
           const today = new Date();
           const oldDueDate = member.nextDueDate;
@@ -164,6 +155,8 @@ router.put('/:id', async (req, res) => {
             packageName: pkg.name,
             amount: pkg.fee,
             feeAtPayment: pkg.fee,
+            balanceBefore: 0,
+            balanceAfter: 0,
             paidOn: today,
             oldDueDate: oldDueDate,
             newDueDate: newDueDate,
@@ -172,7 +165,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // New due date typed by the owner (ignored when starting today)
     if (nextDueDate && !newPayment) {
       const newDate = new Date(nextDueDate);
       if (isNaN(newDate.getTime())) {
@@ -197,7 +189,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete a member
 router.delete('/:id', async (req, res) => {
   try {
     await Member.findByIdAndDelete(req.params.id);
@@ -207,8 +198,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Mark a member as paid (also saves a payment record)
-// The screen may send amount (default: the member's fee) and method (default: Cash)
 router.put('/:id/pay', async (req, res) => {
   try {
     const body = req.body || {};
@@ -231,10 +220,18 @@ router.put('/:id/pay', async (req, res) => {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    const amount = body.amount === undefined ? member.fee : Number(body.amount);
+    const balanceBefore = member.balance || 0;
+    const owed = balanceBefore > 0 ? balanceBefore : member.fee;
+
+    const amount = body.amount === undefined ? owed : Number(body.amount);
     if (!(amount > 0) || amount > MAX_PAYMENT) {
       return res.status(400).json({
         error: 'Amount must be more than 0 and not more than ' + MAX_PAYMENT,
+      });
+    }
+    if (amount > owed) {
+      return res.status(400).json({
+        error: 'Amount cannot be more than Rs ' + owed + ' (what this member owes now)',
       });
     }
 
@@ -245,11 +242,21 @@ router.put('/:id/pay', async (req, res) => {
 
     const today = new Date();
     const oldDueDate = member.nextDueDate;
-    const startFrom = oldDueDate > today ? oldDueDate : today;
-    const newDueDate = new Date(startFrom);
-    newDueDate.setDate(newDueDate.getDate() + pkg.durationDays);
+    const fullyPaid = amount >= owed;
+
+    let newDueDate = oldDueDate;
+    let balanceAfter = 0;
+
+    if (fullyPaid) {
+      const startFrom = oldDueDate > today ? oldDueDate : today;
+      newDueDate = new Date(startFrom);
+      newDueDate.setDate(newDueDate.getDate() + pkg.durationDays);
+    } else {
+      balanceAfter = Math.round((owed - amount) * 100) / 100;
+    }
 
     member.nextDueDate = newDueDate;
+    member.balance = balanceAfter;
 
     const savedPayment = await saveMemberWithPayment(member, {
       memberId: member._id,
@@ -258,6 +265,8 @@ router.put('/:id/pay', async (req, res) => {
       amount: amount,
       method: method,
       feeAtPayment: member.fee,
+      balanceBefore: balanceBefore,
+      balanceAfter: balanceAfter,
       slipImage: slip,
       hasSlip: slip !== '',
       paidOn: today,
@@ -265,7 +274,6 @@ router.put('/:id/pay', async (req, res) => {
       newDueDate: newDueDate,
     });
 
-    // Send back the member and the new payment (without the big slip picture)
     const paymentInfo = savedPayment.toObject();
     delete paymentInfo.slipImage;
     res.json({ member: member, payment: paymentInfo });

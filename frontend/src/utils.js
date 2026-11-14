@@ -1,8 +1,5 @@
-// The API address comes from the setting VITE_API_URL.
-// If the setting is missing (on your own computer), it uses localhost.
 export const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-// A member is "Due soon" when the fee is due in this many days or less
 export const DUE_SOON_DAYS = 2
 
 export function daysLeft(dueDate) {
@@ -52,21 +49,29 @@ export function whatsappNumber(phone) {
   return digits
 }
 
+export function amountOwed(m) {
+  return m.balance > 0 ? m.balance : m.fee
+}
+
 export function sendReminder(m) {
   const days = daysLeft(m.nextDueDate)
+  const what =
+    m.balance > 0
+      ? 'the remaining gym fee of Rs ' + m.balance
+      : 'your gym fee of Rs ' + m.fee
   let text
   if (days < 0) {
     text =
-      'Hello ' + m.name + ', your gym fee of Rs ' + m.fee +
+      'Hello ' + m.name + ', ' + what +
       ' was due on ' + formatDate(m.nextDueDate) +
       '. Please pay as soon as you can. Thank you!'
   } else if (days === 0) {
     text =
-      'Hello ' + m.name + ', your gym fee of Rs ' + m.fee +
+      'Hello ' + m.name + ', ' + what +
       ' is due today. Please pay on time. Thank you!'
   } else {
     text =
-      'Hello ' + m.name + ', your gym fee of Rs ' + m.fee +
+      'Hello ' + m.name + ', ' + what +
       ' is due on ' + formatDate(m.nextDueDate) +
       ' (' + days + (days === 1 ? ' day' : ' days') +
       ' left). Please pay on time. Thank you!'
@@ -77,8 +82,6 @@ export function sendReminder(m) {
   window.open(url, '_blank')
 }
 
-// Take a picture file, cut a square from the middle, make it 200x200,
-// and give back a small JPEG text that can be saved in the database
 export function resizePhoto(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

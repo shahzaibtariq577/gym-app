@@ -7,6 +7,7 @@ const memberSchema = new mongoose.Schema(
     photo: { type: String, default: '' },
     packageName: { type: String, required: true },
     fee: { type: Number, required: true },
+    balance: { type: Number, default: 0, min: 0 },
     joinDate: { type: Date, default: Date.now },
     nextDueDate: { type: Date, required: true },
   },

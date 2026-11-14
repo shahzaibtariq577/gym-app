@@ -27,7 +27,6 @@ function MemberDetails({ members, loadMembers }) {
   const [newPhoto, setNewPhoto] = useState('')
   const [photoMessage, setPhotoMessage] = useState('')
 
-  // The member comes from the list that App.jsx already loaded
   const member = members.find((m) => m._id === id)
 
   function loadPayments() {
@@ -52,7 +51,6 @@ function MemberDetails({ members, loadMembers }) {
     loadPayments()
   }, [id])
 
-  // Close the big photo with the Escape key
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') setBigPhoto(false)
@@ -61,13 +59,11 @@ function MemberDetails({ members, loadMembers }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Open the box that asks the amount and the payment method
   function openPay() {
     setMessage('')
     setShowPay(true)
   }
 
-  // The box saved the payment: close it, show the green message, reload
   function handlePaid(text) {
     setShowPay(false)
     setMessage(text)
@@ -75,11 +71,14 @@ function MemberDetails({ members, loadMembers }) {
     loadPayments()
   }
 
-  // Undo the newest payment: the due date goes back to the date before it
   function handleUndo(payment) {
-    const backText = payment.oldDueDate
-      ? ' The due date goes back to ' + formatDate(payment.oldDueDate) + '.'
-      : ''
+    const backText =
+      (payment.oldDueDate
+        ? ' The due date goes back to ' + formatDate(payment.oldDueDate) + '.'
+        : '') +
+      (payment.balanceBefore > 0
+        ? ' The balance goes back to Rs ' + payment.balanceBefore.toLocaleString() + '.'
+        : '')
     const ok = window.confirm(
       'Undo the payment of Rs ' + payment.amount.toLocaleString() + '?' + backText
     )
@@ -131,7 +130,6 @@ function MemberDetails({ members, loadMembers }) {
     setNewPhoto(text)
   }
 
-  // Send the photo to the backend. An empty text removes the photo.
   function savePhoto(photoText, doneText) {
     setPhotoMessage('')
 
@@ -316,6 +314,14 @@ function MemberDetails({ members, loadMembers }) {
             <div className="details-label">Fee</div>
             <div>Rs {member.fee.toLocaleString()}</div>
           </div>
+          {member.balance > 0 && (
+            <div>
+              <div className="details-label">Balance to pay</div>
+              <div style={{ color: '#b91c1c', fontWeight: 700 }}>
+                Rs {member.balance.toLocaleString()}
+              </div>
+            </div>
+          )}
           <div>
             <div className="details-label">Joined</div>
             <div>{formatDate(member.joinDate)}</div>
@@ -348,6 +354,7 @@ function MemberDetails({ members, loadMembers }) {
                       <th>Date paid</th>
                       <th>Package</th>
                       <th>Amount</th>
+                      <th>Remaining</th>
                       <th>Method</th>
                       <th>Due date before</th>
                       <th>Next due date</th>
@@ -361,6 +368,11 @@ function MemberDetails({ members, loadMembers }) {
                         <td>{formatDate(p.paidOn)}</td>
                         <td>{p.packageName}</td>
                         <td>Rs {p.amount.toLocaleString()}</td>
+                        <td>
+                          {p.balanceAfter > 0
+                            ? 'Rs ' + p.balanceAfter.toLocaleString()
+                            : '-'}
+                        </td>
                         <td>{p.method || '-'}</td>
                         <td>{p.oldDueDate ? formatDate(p.oldDueDate) : '-'}</td>
                         <td>{p.newDueDate ? formatDate(p.newDueDate) : '-'}</td>

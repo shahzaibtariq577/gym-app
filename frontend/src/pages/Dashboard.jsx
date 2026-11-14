@@ -32,7 +32,6 @@ function Dashboard({ members, loadMembers }) {
       .catch(() => {})
   }
 
-  // Earned, spent and profit of this month
   function loadInsights() {
     fetch(API + '/expenses/insights')
       .then((res) => res.json())
@@ -47,7 +46,6 @@ function Dashboard({ members, loadMembers }) {
     loadInsights()
   }, [])
 
-  // Close the big photo with the Escape key
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') setBigMember(null)
@@ -66,6 +64,9 @@ function Dashboard({ members, loadMembers }) {
     (m) => getStatus(daysLeft(m.nextDueDate)) === 'OK'
   ).length
 
+  const unpaidMembers = members.filter((m) => m.balance > 0)
+  const unpaidTotal = unpaidMembers.reduce((sum, m) => sum + m.balance, 0)
+
   const urgent = members.filter(
     (m) => getStatus(daysLeft(m.nextDueDate)) !== 'OK'
   )
@@ -78,13 +79,11 @@ function Dashboard({ members, loadMembers }) {
     year: 'numeric',
   })
 
-  // Open the box that asks the amount and the payment method
   function openPay(m) {
     setMessage('')
     setPayMember(m)
   }
 
-  // The box saved the payment: close it, show the green message, reload
   function handlePaid(text) {
     setPayMember(null)
     setMessage(text)
@@ -234,6 +233,30 @@ function Dashboard({ members, loadMembers }) {
         </button>
       </div>
 
+      {unpaidTotal > 0 && (
+        <div className="collect" style={{ borderColor: '#ea7a0c' }}>
+          <div className="collect-icon" style={{ background: '#ea7a0c' }}>
+            🕒
+          </div>
+          <div>
+            <div className="collect-amount">
+              Rs {unpaidTotal.toLocaleString()}
+            </div>
+            <div className="collect-label">
+              Unpaid balance ({unpaidMembers.length}{' '}
+              {unpaidMembers.length === 1 ? 'member' : 'members'})
+            </div>
+          </div>
+          <button
+            className="grey"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => navigate('/members')}
+          >
+            View members →
+          </button>
+        </div>
+      )}
+
       {insights && (
         <div
           className="collect"
@@ -329,7 +352,20 @@ function Dashboard({ members, loadMembers }) {
                         </div>
                       </td>
                       <td>{m.phone}</td>
-                      <td>Rs {m.fee}</td>
+                      <td>
+                        Rs {m.fee}
+                        {m.balance > 0 && (
+                          <div
+                            style={{
+                              color: '#b91c1c',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Rs {m.balance.toLocaleString()} left
+                          </div>
+                        )}
+                      </td>
                       <td>{formatDate(m.nextDueDate)}</td>
                       <td>
                         <span className={'badge ' + getColor(days)}>

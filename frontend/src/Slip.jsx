@@ -2,7 +2,6 @@ import { useState, useEffect, useContext } from 'react'
 import { API, formatDate } from './utils'
 import SettingsContext from './SettingsContext'
 
-// When printing, show only the receipt (not the rest of the page)
 const PRINT_CSS = `
 @media print {
   body * { visibility: hidden !important; }
@@ -36,9 +35,6 @@ function Row({ label, value, strong }) {
   )
 }
 
-// A payment receipt with a stamp. The stamp shows the gym name
-// (change it with "Edit name" in the side menu).
-// If the payment has a bank slip picture, the owner can open it too.
 function Slip({ payment, onClose }) {
   const { gymName, gymPhone, gymAddress } = useContext(SettingsContext)
   const [bankSlip, setBankSlip] = useState('')
@@ -46,7 +42,6 @@ function Slip({ payment, onClose }) {
   const [loadingBank, setLoadingBank] = useState(false)
   const [error, setError] = useState('')
 
-  // Close with the Escape key
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') onClose()
@@ -57,9 +52,24 @@ function Slip({ payment, onClose }) {
 
   const fee = payment.feeAtPayment
   const hasFee = typeof fee === 'number'
-  const remaining = hasFee ? Math.max(fee - payment.amount, 0) : 0
+  const balanceAfter = payment.balanceAfter || 0
+  const balanceBefore = payment.balanceBefore || 0
+  const legacyPart =
+    hasFee && balanceBefore === 0 && balanceAfter === 0 && payment.amount < fee
+  const remaining = !hasFee
+    ? 0
+    : balanceAfter > 0
+      ? balanceAfter
+      : legacyPart
+        ? fee - payment.amount
+        : 0
   const extra = hasFee ? Math.max(payment.amount - fee, 0) : 0
   const partPaid = hasFee && remaining > 0
+  const dueMoved =
+    payment.newDueDate &&
+    (!payment.oldDueDate ||
+      new Date(payment.newDueDate).getTime() !==
+        new Date(payment.oldDueDate).getTime())
   const stampColor = partPaid ? '#b91c1c' : '#3730a3'
   const receiptNo = 'R-' + String(payment._id).slice(-6).toUpperCase()
   const timeText = new Date(payment.paidOn).toLocaleTimeString('en-GB', {
@@ -146,6 +156,12 @@ function Slip({ payment, onClose }) {
           <Row label="Member" value={payment.memberName} />
           <Row label="Package" value={payment.packageName} />
           {hasFee && <Row label="Package fee" value={'Rs ' + fee.toLocaleString()} />}
+          {balanceBefore > 0 && (
+            <Row
+              label="Balance before"
+              value={'Rs ' + balanceBefore.toLocaleString()}
+            />
+          )}
           <Row
             label="Amount paid"
             value={'Rs ' + payment.amount.toLocaleString()}
@@ -166,7 +182,10 @@ function Slip({ payment, onClose }) {
           )}
           <Row label="Paid by" value={payment.method || 'Cash'} />
           {payment.newDueDate && (
-            <Row label="Next due date" value={formatDate(payment.newDueDate)} />
+            <Row
+              label={dueMoved || legacyPart ? 'Next due date' : 'Due date (not moved yet)'}
+              value={formatDate(payment.newDueDate)}
+            />
           )}
 
           <div

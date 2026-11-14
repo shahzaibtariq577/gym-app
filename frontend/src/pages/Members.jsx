@@ -17,7 +17,6 @@ const PAGE_SIZE = 10
 const FILTERS = { all: 'All Status', late: 'Late', soon: 'Due soon', ok: 'OK' }
 const STATUS_OF = { late: 'Late', soon: 'Due soon', ok: 'OK' }
 
-// Turn a date into text like 2026-11-30 for the date box
 function toInputDate(date) {
   const d = new Date(date)
   const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -219,7 +218,6 @@ function Members({ members, packages, loadMembers }) {
     if (startToday) {
       body.startToday = true
     } else if (editDueDate !== editOldDueDate) {
-      // Send the due date only if the owner changed it
       body.nextDueDate = editDueDate
     }
 
@@ -240,14 +238,12 @@ function Members({ members, packages, loadMembers }) {
       })
   }
 
-  // Open the box that asks the amount and the payment method
   function openPay(m) {
     setMessage('')
     setEditMessage('')
     setPayMember(m)
   }
 
-  // The box saved the payment: close it, show the green message, reload
   function handlePaid(text) {
     setPayMember(null)
     setMessage(text)
@@ -503,6 +499,17 @@ function Members({ members, packages, loadMembers }) {
                     </td>
                     <td>
                       Rs {isEditing && editPackage ? editPackage.fee : m.fee}
+                      {m.balance > 0 && (
+                        <div
+                          style={{
+                            color: '#b91c1c',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                          }}
+                        >
+                          Rs {m.balance.toLocaleString()} left
+                        </div>
+                      )}
                     </td>
                     <td>
                       {isEditing ? (

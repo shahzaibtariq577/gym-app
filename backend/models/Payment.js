@@ -12,6 +12,8 @@ const paymentSchema = new mongoose.Schema(
       default: 'Cash',
     },
     feeAtPayment: { type: Number },
+    balanceBefore: { type: Number, default: 0 },
+    balanceAfter: { type: Number, default: 0 },
     slipImage: { type: String, default: '' },
     hasSlip: { type: Boolean, default: false },
     paidOn: { type: Date, default: Date.now },

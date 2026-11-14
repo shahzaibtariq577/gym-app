@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { API } from './utils'
+import { API, amountOwed } from './utils'
 import Slip from './Slip'
 
 const METHODS = ['Cash', 'JazzCash', 'Easypaisa', 'Bank']
 const MAX_SLIP_TEXT = 700000
 
-// Shrink a bank slip picture: longest side 1100 px, saved as small JPEG text.
 function resizeSlip(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -31,12 +30,9 @@ function resizeSlip(file) {
   })
 }
 
-// A small box that asks "how much" and "how" before saving a payment.
-// For online payments the owner can also add the bank slip picture.
-// After saving, the box shows "Payment saved" with a button to see the slip.
-// When the owner closes the box, it calls onPaid(messageText) so the page reloads.
 function PayBox({ member, onClose, onPaid }) {
-  const [amount, setAmount] = useState(String(member.fee))
+  const owed = amountOwed(member)
+  const [amount, setAmount] = useState(String(owed))
   const [method, setMethod] = useState('Cash')
   const [slip, setSlip] = useState('')
   const [error, setError] = useState('')
@@ -44,7 +40,6 @@ function PayBox({ member, onClose, onPaid }) {
   const [done, setDone] = useState(null)
   const [showSlip, setShowSlip] = useState(false)
 
-  // Escape key: close the box (the slip window closes itself first)
   useEffect(() => {
     function onKey(e) {
       if (e.key !== 'Escape' || showSlip) return
@@ -54,6 +49,8 @@ function PayBox({ member, onClose, onPaid }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [done, showSlip])
+
+  const money = Number(amount)
 
   function changeMethod(value) {
     setMethod(value)
@@ -84,9 +81,12 @@ function PayBox({ member, onClose, onPaid }) {
     e.preventDefault()
     if (saving) return
 
-    const money = Number(amount)
     if (!(money > 0)) {
       setError('Error: Amount must be more than 0')
+      return
+    }
+    if (money > owed) {
+      setError('Error: Amount cannot be more than Rs ' + owed.toLocaleString())
       return
     }
 
@@ -108,6 +108,7 @@ function PayBox({ member, onClose, onPaid }) {
         if (data.error) {
           setError('Error: ' + data.error)
         } else {
+          const left = data.payment ? data.payment.balanceAfter : 0
           setDone({
             payment: data.payment,
             text:
@@ -117,7 +118,8 @@ function PayBox({ member, onClose, onPaid }) {
               member.name +
               ' (' +
               method +
-              ')',
+              ')' +
+              (left > 0 ? '. Rs ' + left.toLocaleString() + ' still remaining' : ''),
           })
         }
       })
@@ -156,7 +158,11 @@ function PayBox({ member, onClose, onPaid }) {
               <h2>✅ Mark as paid</h2>
               <p style={{ margin: '0 0 12px' }}>
                 <strong>{member.name}</strong> - {member.packageName} (fee Rs{' '}
-                {member.fee.toLocaleString()})
+                {member.fee.toLocaleString()}
+                {member.balance > 0
+                  ? ', remaining Rs ' + member.balance.toLocaleString()
+                  : ''}
+                )
               </p>
 
               <form onSubmit={handleSave}>
@@ -233,8 +239,11 @@ function PayBox({ member, onClose, onPaid }) {
                 )}
 
                 <p className="info-note">
-                  The next due date moves by the full package days, even if the
-                  amount is different from the fee.
+                  {money > 0 && money < owed
+                    ? 'Part payment: Rs ' +
+                      (Math.round((owed - money) * 100) / 100).toLocaleString() +
+                      ' will remain. The due date moves only when the fee is fully paid.'
+                    : 'The next due date moves by the full package days.'}
                 </p>
 
                 {error && <p className="msg-error">{error}</p>}
