@@ -3,7 +3,9 @@ import { API, amountOwed } from './utils'
 import Slip from './Slip'
 
 const METHODS = ['Cash', 'JazzCash', 'Easypaisa', 'Bank']
-const MAX_SLIP_TEXT = 700000
+const MAX_SLIP_TEXT = 300000
+const SLIP_MAX_SIDE = 800
+const SLIP_QUALITY = 0.55
 
 function resizeSlip(file) {
   return new Promise((resolve, reject) => {
@@ -13,8 +15,7 @@ function resizeSlip(file) {
       const img = new Image()
       img.onerror = () => reject(new Error('This file is not a picture'))
       img.onload = () => {
-        const maxSide = 1100
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
+        const scale = Math.min(1, SLIP_MAX_SIDE / Math.max(img.width, img.height))
         const canvas = document.createElement('canvas')
         canvas.width = Math.round(img.width * scale)
         canvas.height = Math.round(img.height * scale)
@@ -22,7 +23,7 @@ function resizeSlip(file) {
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL('image/jpeg', 0.65))
+        resolve(canvas.toDataURL('image/jpeg', SLIP_QUALITY))
       }
       img.src = reader.result
     }

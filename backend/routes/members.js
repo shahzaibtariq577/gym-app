@@ -10,7 +10,7 @@ const MAX_PHOTO_LENGTH = 100000;
 const PAYMENT_METHODS = ['Cash', 'JazzCash', 'Easypaisa', 'Bank'];
 const MAX_PAYMENT = 1000000;
 
-const MAX_SLIP_LENGTH = 700000;
+const MAX_SLIP_LENGTH = 300000;
 
 function checkNameAndPhone(name, phone) {
   const cleanName = String(name || '').trim();
