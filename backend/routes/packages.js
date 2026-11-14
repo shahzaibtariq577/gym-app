@@ -4,7 +4,6 @@ const Member = require('../models/Member');
 
 const router = express.Router();
 
-// Clean the details list: text only, no empty lines, no repeats, max 10
 function cleanFeatures(list) {
   if (!Array.isArray(list)) return [];
   const result = [];
@@ -17,7 +16,6 @@ function cleanFeatures(list) {
   return result.slice(0, 10);
 }
 
-// Check name, fee and days. Returns an error text, or '' if all is fine
 function checkPackage(name, fee, durationDays) {
   const cleanName = String(name || '').trim();
   const feeNumber = Number(fee);
@@ -32,28 +30,35 @@ function checkPackage(name, fee, durationDays) {
   return '';
 }
 
-// Show all packages
 router.get('/', async (req, res) => {
   try {
-    const packages = await Package.find().sort({ fee: 1 });
+    const packages = await Package.find({ gymId: req.gymId }).sort({ fee: 1 });
     res.json(packages);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Add a new package
 router.post('/', async (req, res) => {
   try {
-    const { name, fee, durationDays, features } = req.body;
+    const { name, fee, durationDays, features } = req.body || {};
 
     const problem = checkPackage(name, fee, durationDays);
     if (problem) {
       return res.status(400).json({ error: problem });
     }
 
+    const cleanName = String(name).trim();
+    const exists = await Package.findOne({ gymId: req.gymId, name: cleanName });
+    if (exists) {
+      return res
+        .status(400)
+        .json({ error: 'A package named ' + cleanName + ' already exists' });
+    }
+
     const pkg = await Package.create({
-      name: String(name).trim(),
+      gymId: req.gymId,
+      name: cleanName,
       fee: Number(fee),
       durationDays: Number(durationDays),
       features: cleanFeatures(features),
@@ -64,12 +69,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Edit a package (name, fee, days and details)
 router.put('/:id', async (req, res) => {
   try {
-    const { name, fee, durationDays, features } = req.body;
+    const { name, fee, durationDays, features } = req.body || {};
 
-    const pkg = await Package.findById(req.params.id);
+    const pkg = await Package.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
     if (!pkg) {
       return res.status(404).json({ error: 'Package not found' });
     }
@@ -88,6 +95,7 @@ router.put('/:id', async (req, res) => {
 
     if (newName && newName !== oldName) {
       const exists = await Package.findOne({
+        gymId: req.gymId,
         name: newName,
         _id: { $ne: pkg._id },
       });
@@ -104,10 +112,9 @@ router.put('/:id', async (req, res) => {
     if (Array.isArray(features)) pkg.features = cleanFeatures(features);
     await pkg.save();
 
-    // Keep the members of this package in sync with the new name
     if (pkg.name !== oldName) {
       await Member.updateMany(
-        { packageName: oldName },
+        { gymId: req.gymId, packageName: oldName },
         { packageName: pkg.name }
       );
     }
@@ -118,15 +125,20 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete a package (only if no member uses it)
 router.delete('/:id', async (req, res) => {
   try {
-    const pkg = await Package.findById(req.params.id);
+    const pkg = await Package.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
     if (!pkg) {
       return res.status(404).json({ error: 'Package not found' });
     }
 
-    const count = await Member.countDocuments({ packageName: pkg.name });
+    const count = await Member.countDocuments({
+      gymId: req.gymId,
+      packageName: pkg.name,
+    });
     if (count > 0) {
       return res.status(400).json({
         error:
@@ -134,7 +146,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    await Package.findByIdAndDelete(req.params.id);
+    await Package.deleteOne({ _id: pkg._id, gymId: req.gymId });
     res.json({ message: 'Package deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });

@@ -53,7 +53,9 @@ async function saveMemberWithPayment(member, paymentData) {
 
 router.get('/', async (req, res) => {
   try {
-    const members = await Member.find().sort({ nextDueDate: 1 });
+    const members = await Member.find({ gymId: req.gymId }).sort({
+      nextDueDate: 1,
+    });
     res.json(members);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -62,7 +64,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, phone, photo, packageId } = req.body;
+    const { name, phone, photo, packageId } = req.body || {};
 
     const problem = checkNameAndPhone(name, phone);
     if (problem) {
@@ -74,7 +76,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: photoProblem });
     }
 
-    const pkg = await Package.findById(packageId);
+    const pkg = await Package.findOne({ _id: packageId, gymId: req.gymId });
     if (!pkg) {
       return res.status(400).json({ error: 'Package not found' });
     }
@@ -84,6 +86,7 @@ router.post('/', async (req, res) => {
     nextDueDate.setDate(nextDueDate.getDate() + pkg.durationDays);
 
     const member = await Member.create({
+      gymId: req.gymId,
       name: String(name).trim(),
       phone: String(phone).trim(),
       photo: photo || '',
@@ -101,9 +104,13 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const { name, phone, photo, packageId, nextDueDate, startToday } = req.body;
+    const { name, phone, photo, packageId, nextDueDate, startToday } =
+      req.body || {};
 
-    const member = await Member.findById(req.params.id);
+    const member = await Member.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
     }
@@ -127,7 +134,7 @@ router.put('/:id', async (req, res) => {
     let newPayment = null;
 
     if (packageId) {
-      const pkg = await Package.findById(packageId);
+      const pkg = await Package.findOne({ _id: packageId, gymId: req.gymId });
       if (!pkg) {
         return res.status(400).json({ error: 'Package not found' });
       }
@@ -150,6 +157,7 @@ router.put('/:id', async (req, res) => {
 
           member.nextDueDate = newDueDate;
           newPayment = {
+            gymId: req.gymId,
             memberId: member._id,
             memberName: member.name,
             packageName: pkg.name,
@@ -191,7 +199,13 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await Member.findByIdAndDelete(req.params.id);
+    const deleted = await Member.findOneAndDelete({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
     res.json({ message: 'Member deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -215,7 +229,10 @@ router.put('/:id/pay', async (req, res) => {
       return res.status(400).json({ error: slipProblem });
     }
 
-    const member = await Member.findById(req.params.id);
+    const member = await Member.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
     }
@@ -235,7 +252,10 @@ router.put('/:id/pay', async (req, res) => {
       });
     }
 
-    const pkg = await Package.findOne({ name: member.packageName });
+    const pkg = await Package.findOne({
+      name: member.packageName,
+      gymId: req.gymId,
+    });
     if (!pkg) {
       return res.status(400).json({ error: 'Package not found' });
     }
@@ -259,6 +279,7 @@ router.put('/:id/pay', async (req, res) => {
     member.balance = balanceAfter;
 
     const savedPayment = await saveMemberWithPayment(member, {
+      gymId: req.gymId,
       memberId: member._id,
       memberName: member.name,
       packageName: member.packageName,

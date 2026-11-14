@@ -1,25 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { API } from '../utils'
 import { setToken } from '../auth'
 
-// The login screen. It is shown instead of the app until the owner logs in.
+const PRODUCT = 'GymDesk'
+
 function Login({ onLoggedIn }) {
-  const [gymName, setGymName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-
-  // The gym name comes from the server (open door), so every device shows the same name
-  useEffect(() => {
-    fetch(API + '/auth/gym')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.gymName) setGymName(data.gymName)
-      })
-      .catch(() => {})
-  }, [])
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -72,7 +63,7 @@ function Login({ onLoggedIn }) {
         <div style={{ textAlign: 'center', marginBottom: '14px' }}>
           <div style={{ fontSize: '40px' }}>🏋️</div>
           <h1 className="page-title" style={{ margin: '4px 0 2px' }}>
-            {gymName}
+            {PRODUCT}
           </h1>
           <div style={{ color: '#6b7280' }}>Owner login</div>
         </div>
@@ -130,6 +121,13 @@ function Login({ onLoggedIn }) {
             {busy ? 'Logging in...' : 'Log in'}
           </button>
         </form>
+
+        <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px' }}>
+          New gym? <Link to="/signup">Sign up</Link>
+        </p>
+        <p style={{ textAlign: 'center', marginTop: '6px', fontSize: '14px' }}>
+          <Link to="/">Back to home</Link>
+        </p>
       </div>
     </div>
   )

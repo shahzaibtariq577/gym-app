@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema(
   {
+    gymId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Gym',
+      required: true,
+      index: true,
+    },
     memberId: { type: mongoose.Schema.Types.ObjectId, required: true },
     memberName: { type: String, required: true },
     packageName: { type: String, required: true },

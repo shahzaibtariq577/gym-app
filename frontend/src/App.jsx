@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Link, Navigate } from 'react-router-dom'
 import './App.css'
 import { API } from './utils'
 import Dashboard from './pages/Dashboard'
@@ -8,6 +8,8 @@ import Packages from './pages/Packages'
 import PaymentHistory from './pages/PaymentHistory'
 import MemberDetails from './pages/Memberdetails'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Landing from './pages/Landing'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
 import SettingsContext from './SettingsContext'
@@ -66,24 +68,6 @@ function Layout({ onLogout }) {
           return
         }
         setSettings(data)
-
-        // One time: move the gym name this browser saved before into the database
-        const old = localStorage.getItem('gymName')
-        if (old && old !== 'My Gym' && data.gymName === 'My Gym') {
-          return fetch(API + '/settings', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ gymName: old }),
-          })
-            .then((res) => res.json())
-            .then((saved) => {
-              if (!saved.error) {
-                setSettings(saved)
-                localStorage.removeItem('gymName')
-              }
-            })
-        }
-        if (old) localStorage.removeItem('gymName')
       })
       .catch(() => setLoadError(LOAD_ERROR))
   }
@@ -209,6 +193,7 @@ function Layout({ onLogout }) {
             <Route path="/payments" element={<PaymentHistory />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}
       </main>
@@ -217,11 +202,20 @@ function Layout({ onLogout }) {
   )
 }
 
+function PublicRoutes({ onLoggedIn }) {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login onLoggedIn={onLoggedIn} />} />
+      <Route path="/signup" element={<Signup onLoggedIn={onLoggedIn} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(() => getToken() !== '')
 
-  // auth.js sends this event when the backend says "please log in"
-  // (for example when the login has expired)
   useEffect(() => {
     function onLogout() {
       setLoggedIn(false)
@@ -235,13 +229,13 @@ function App() {
     setLoggedIn(false)
   }
 
-  if (!loggedIn) {
-    return <Login onLoggedIn={() => setLoggedIn(true)} />
-  }
-
   return (
     <BrowserRouter>
-      <Layout onLogout={handleLogout} />
+      {loggedIn ? (
+        <Layout onLogout={handleLogout} />
+      ) : (
+        <PublicRoutes onLoggedIn={() => setLoggedIn(true)} />
+      )}
     </BrowserRouter>
   )
 }

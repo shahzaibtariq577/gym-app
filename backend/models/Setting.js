@@ -1,8 +1,13 @@
 const mongoose = require('mongoose');
 
-// The settings of the gym and the owner's profile. There is only one of these.
 const settingSchema = new mongoose.Schema(
   {
+    gymId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Gym',
+      required: true,
+      unique: true,
+    },
     gymName: { type: String, default: 'My Gym', trim: true },
     gymPhone: { type: String, default: '', trim: true },
     gymAddress: { type: String, default: '', trim: true },

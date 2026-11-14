@@ -1,9 +1,13 @@
 const mongoose = require('mongoose');
 
-// The gym owner who can log in. There is only one owner.
-// The password is never saved: only a scrambled copy (a hash) is saved.
 const ownerSchema = new mongoose.Schema(
   {
+    gymId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Gym',
+      required: true,
+      index: true,
+    },
     username: {
       type: String,
       required: true,

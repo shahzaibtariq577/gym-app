@@ -5,7 +5,9 @@ const bcrypt = require('bcryptjs');
 const request = require('supertest');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
+const Gym = require('../models/Gym');
 const Owner = require('../models/Owner');
+const Setting = require('../models/Setting');
 const app = require('../app');
 
 let mongod;
@@ -28,14 +30,23 @@ async function clearDb() {
   }
 }
 
-async function loginToken() {
+async function loginToken(options) {
+  const opts = options || {};
+  const username = opts.username || 'testowner';
+  const password = opts.password || 'password123';
+  const gymName = opts.gymName || 'Test Gym';
+
+  const gym = await Gym.create({ name: gymName });
   await Owner.create({
-    username: 'testowner',
-    passwordHash: await bcrypt.hash('password123', 4),
+    gymId: gym._id,
+    username: username,
+    passwordHash: await bcrypt.hash(password, 4),
   });
+  await Setting.create({ gymId: gym._id, gymName: gymName });
+
   const res = await request(app)
     .post('/api/auth/login')
-    .send({ username: 'testowner', password: 'password123' });
+    .send({ username: username, password: password });
   return res.body.token;
 }
 

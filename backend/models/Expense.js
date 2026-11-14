@@ -1,10 +1,13 @@
 const mongoose = require('mongoose');
 
-// One expense of the gym: electricity, rent, salary, repair...
-// billImage is an optional picture of the bill (saved as text, like the bank slip).
-// hasBill tells the screen that a picture exists, without sending the big picture.
 const expenseSchema = new mongoose.Schema(
   {
+    gymId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Gym',
+      required: true,
+      index: true,
+    },
     date: { type: Date, required: true },
     category: {
       type: String,

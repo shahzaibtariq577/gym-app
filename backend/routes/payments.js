@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const filter = {};
+    const filter = { gymId: req.gymId };
     if (req.query.memberId) filter.memberId = req.query.memberId;
 
     const payments = await Payment.find(filter)
@@ -25,6 +25,7 @@ router.get('/summary', async (req, res) => {
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     const payments = await Payment.find({
+      gymId: req.gymId,
       paidOn: { $gte: start, $lt: end },
     }).select('amount');
 
@@ -45,9 +46,10 @@ router.get('/summary', async (req, res) => {
 
 router.get('/:id/slip', async (req, res) => {
   try {
-    const payment = await Payment.findById(req.params.id).select(
-      'slipImage'
-    );
+    const payment = await Payment.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    }).select('slipImage');
     if (!payment || !payment.slipImage) {
       return res
         .status(404)
@@ -61,16 +63,24 @@ router.get('/:id/slip', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const payment = await Payment.findById(req.params.id);
+    const payment = await Payment.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
     }
 
-    const member = await Member.findById(payment.memberId);
+    const member = await Member.findOne({
+      _id: payment.memberId,
+      gymId: req.gymId,
+    });
 
     if (member) {
-      const newest = await Payment.findOne({ memberId: payment.memberId })
-        .sort({ paidOn: -1, _id: -1 });
+      const newest = await Payment.findOne({
+        memberId: payment.memberId,
+        gymId: req.gymId,
+      }).sort({ paidOn: -1, _id: -1 });
 
       if (String(newest._id) !== String(payment._id)) {
         return res.status(400).json({
@@ -85,7 +95,7 @@ router.delete('/:id', async (req, res) => {
       await member.save();
     }
 
-    await Payment.findByIdAndDelete(payment._id);
+    await Payment.deleteOne({ _id: payment._id, gymId: req.gymId });
 
     res.json({ message: 'Payment undone' });
   } catch (err) {

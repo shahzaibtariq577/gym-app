@@ -2,13 +2,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const Setting = require('../models/Setting');
 const Owner = require('../models/Owner');
+const Gym = require('../models/Gym');
 
 const router = express.Router();
 
-// Biggest photo text we accept (a 200x200 photo is about 10,000 to 20,000)
 const MAX_PHOTO_LENGTH = 100000;
 
-// Check the photo. It can be empty. Returns an error text, or '' if all is fine
 function checkPhoto(photo) {
   if (!photo) return '';
   if (typeof photo !== 'string') return 'Photo is not valid';
@@ -17,14 +16,16 @@ function checkPhoto(photo) {
   return '';
 }
 
-// There is only one settings record. Make it the first time it is needed.
-async function getSetting() {
-  let setting = await Setting.findOne();
-  if (!setting) setting = await Setting.create({});
+async function getSetting(gymId) {
+  let setting = await Setting.findOne({ gymId });
+  if (!setting) setting = await Setting.create({ gymId });
   return setting;
 }
 
-// What we send to the screen
+function findOwner(req) {
+  return Owner.findOne({ _id: req.owner.id, gymId: req.gymId });
+}
+
 function toJson(setting, username) {
   return {
     gymName: setting.gymName,
@@ -36,7 +37,6 @@ function toJson(setting, username) {
   };
 }
 
-// Check one text field. Returns an error text, or '' if all is fine
 function checkText(value, max, label) {
   if (String(value).trim().length > max) {
     return label + ' is too long (max ' + max + ' letters)';
@@ -44,22 +44,20 @@ function checkText(value, max, label) {
   return '';
 }
 
-// Show the settings
 router.get('/', async (req, res) => {
   try {
-    const setting = await getSetting();
-    const owner = await Owner.findById(req.owner.id);
+    const setting = await getSetting(req.gymId);
+    const owner = await findOwner(req);
     res.json(toJson(setting, owner ? owner.username : ''));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Change the gym information and the owner profile (only the fields that are sent)
 router.put('/', async (req, res) => {
   try {
     const body = req.body || {};
-    const setting = await getSetting();
+    const setting = await getSetting(req.gymId);
 
     if (body.gymName !== undefined) {
       const name = String(body.gymName).trim();
@@ -82,7 +80,6 @@ router.put('/', async (req, res) => {
       }
     }
 
-    // New photo (an empty photo removes the picture)
     if (body.ownerPhoto !== undefined) {
       const photoProblem = checkPhoto(body.ownerPhoto);
       if (photoProblem) return res.status(400).json({ error: photoProblem });
@@ -90,19 +87,20 @@ router.put('/', async (req, res) => {
     }
 
     await setting.save();
-    const owner = await Owner.findById(req.owner.id);
+    if (body.gymName !== undefined) {
+      await Gym.updateOne({ _id: req.gymId }, { name: setting.gymName });
+    }
+    const owner = await findOwner(req);
     res.json(toJson(setting, owner ? owner.username : ''));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Change the login username and/or password. The current password is needed.
-// A wrong current password answers 400 (not 401), because 401 means "log out".
 router.put('/account', async (req, res) => {
   try {
     const body = req.body || {};
-    const owner = await Owner.findById(req.owner.id);
+    const owner = await findOwner(req);
     if (!owner) {
       return res.status(404).json({ error: 'Owner not found' });
     }

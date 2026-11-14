@@ -18,7 +18,6 @@ const MAX_AMOUNT = 10000000;
 const MAX_BILL_LENGTH = 700000;
 const TREND_MONTHS = 6;
 
-// Check the bill picture. It can be empty. Returns an error text, or '' if fine
 function checkBill(bill) {
   if (!bill) return '';
   if (typeof bill !== 'string') return 'Bill picture is not valid';
@@ -31,14 +30,11 @@ function pad(number) {
   return String(number).padStart(2, '0');
 }
 
-// A date -> "2026-11" (server time, the same way the payment totals work)
 function monthKey(date) {
   const d = new Date(date);
   return d.getFullYear() + '-' + pad(d.getMonth() + 1);
 }
 
-// "2026-11" -> the first day of that month and the first day of the next month.
-// Returns null if the text is not a month.
 function monthRange(text) {
   const match = /^(\d{4})-(\d{2})$/.exec(text || '');
   if (!match) return null;
@@ -54,7 +50,6 @@ function monthRange(text) {
   };
 }
 
-// "2026-11-30" -> that day at midnight. Returns null if it is not a real date.
 function parseDay(text) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(text || ''));
   if (!match) return null;
@@ -78,7 +73,6 @@ function withoutBill(expense) {
   return json;
 }
 
-// Earned, spent and profit: this month, spending by category, and the last 6 months
 router.get('/insights', async (req, res) => {
   try {
     const now = new Date();
@@ -94,15 +88,20 @@ router.get('/insights', async (req, res) => {
     );
 
     const [payments, expenses] = await Promise.all([
-      Payment.find({ paidOn: { $gte: trendStart, $lt: range.end } })
+      Payment.find({
+        gymId: req.gymId,
+        paidOn: { $gte: trendStart, $lt: range.end },
+      })
         .select('amount paidOn')
         .lean(),
-      Expense.find({ date: { $gte: trendStart, $lt: range.end } })
+      Expense.find({
+        gymId: req.gymId,
+        date: { $gte: trendStart, $lt: range.end },
+      })
         .select('amount date category')
         .lean(),
     ]);
 
-    // One row for each of the last 6 months, oldest first
     const trend = [];
     const rowOf = {};
     for (let i = TREND_MONTHS - 1; i >= 0; i--) {
@@ -158,7 +157,6 @@ router.get('/insights', async (req, res) => {
   }
 });
 
-// Show the expenses of one month (newest first). Use ?month=2026-11
 router.get('/', async (req, res) => {
   try {
     const now = new Date();
@@ -168,6 +166,7 @@ router.get('/', async (req, res) => {
     }
 
     const expenses = await Expense.find({
+      gymId: req.gymId,
       date: { $gte: range.start, $lt: range.end },
     })
       .select('-billImage')
@@ -179,10 +178,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get the bill picture of one expense
 router.get('/:id/bill', async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id).select('billImage');
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    }).select('billImage');
     if (!expense || !expense.billImage) {
       return res.status(404).json({ error: 'No bill picture saved for this expense' });
     }
@@ -192,7 +193,6 @@ router.get('/:id/bill', async (req, res) => {
   }
 });
 
-// Add an expense
 router.post('/', async (req, res) => {
   try {
     const body = req.body || {};
@@ -221,6 +221,7 @@ router.post('/', async (req, res) => {
     if (billProblem) return res.status(400).json({ error: billProblem });
 
     const expense = await Expense.create({
+      gymId: req.gymId,
       date: date,
       category: body.category,
       amount: amount,
@@ -235,13 +236,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Edit an expense (only the fields that are sent).
-// billImage: leave it out to keep the picture, send '' to remove it, or send a new one.
 router.put('/:id', async (req, res) => {
   try {
     const body = req.body || {};
 
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
     if (!expense) {
       return res.status(404).json({ error: 'Expense not found' });
     }
@@ -292,10 +294,15 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete an expense
 router.delete('/:id', async (req, res) => {
   try {
-    await Expense.findByIdAndDelete(req.params.id);
+    const deleted = await Expense.findOneAndDelete({
+      _id: req.params.id,
+      gymId: req.gymId,
+    });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
     res.json({ message: 'Expense deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });

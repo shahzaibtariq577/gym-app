@@ -157,7 +157,9 @@ describe('undo with balance', () => {
     const oldDue = new Date(Date.now() + 5 * DAY);
     const newDue = new Date(Date.now() + 35 * DAY);
     await Member.updateOne({ _id: member._id }, { nextDueDate: newDue });
+    const saved = await Member.findById(member._id);
     const old = await Payment.collection.insertOne({
+      gymId: saved.gymId,
       memberId: new (require('mongoose').Types.ObjectId)(member._id),
       memberName: 'Ali Khan',
       packageName: 'Gold',
