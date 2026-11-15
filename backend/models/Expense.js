@@ -20,6 +20,7 @@ const expenseSchema = new mongoose.Schema(
         'New equipment',
         'Internet',
         'Cleaning',
+        'Supplements',
         'Other',
       ],
     },
@@ -27,6 +28,11 @@ const expenseSchema = new mongoose.Schema(
     note: { type: String, default: '', trim: true },
     billImage: { type: String, default: '' },
     hasBill: { type: Boolean, default: false },
+    purchaseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Purchase',
+      default: null,
+    },
   },
   { timestamps: true }
 );

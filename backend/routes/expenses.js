@@ -1,6 +1,8 @@
 const express = require('express');
 const Expense = require('../models/Expense');
 const Payment = require('../models/Payment');
+const Sale = require('../models/Sale');
+const Purchase = require('../models/Purchase');
 
 const router = express.Router();
 
@@ -12,6 +14,7 @@ const CATEGORIES = [
   'New equipment',
   'Internet',
   'Cleaning',
+  'Supplements',
   'Other',
 ];
 const MAX_AMOUNT = 10000000;
@@ -67,6 +70,14 @@ function parseDay(text) {
   return date;
 }
 
+const LOCKED_MESSAGE = 'Remove it from Shop > Purchase history';
+
+async function isLocked(expense, gymId) {
+  if (!expense.purchaseId) return false;
+  const found = await Purchase.exists({ _id: expense.purchaseId, gymId: gymId });
+  return !!found;
+}
+
 function withoutBill(expense) {
   const json = expense.toObject();
   delete json.billImage;
@@ -87,7 +98,7 @@ router.get('/insights', async (req, res) => {
       1
     );
 
-    const [payments, expenses] = await Promise.all([
+    const [payments, expenses, sales] = await Promise.all([
       Payment.find({
         gymId: req.gymId,
         paidOn: { $gte: trendStart, $lt: range.end },
@@ -100,13 +111,28 @@ router.get('/insights', async (req, res) => {
       })
         .select('amount date category')
         .lean(),
+      Sale.find({
+        gymId: req.gymId,
+        soldOn: { $gte: trendStart, $lt: range.end },
+      })
+        .select('total soldOn quantity costPrice')
+        .lean(),
     ]);
 
     const trend = [];
     const rowOf = {};
     for (let i = TREND_MONTHS - 1; i >= 0; i--) {
       const d = new Date(range.year, range.month - 1 - i, 1);
-      const row = { month: monthKey(d), earned: 0, spent: 0, profit: 0 };
+      const row = {
+        month: monthKey(d),
+        earned: 0,
+        feesEarned: 0,
+        shopEarned: 0,
+        shopCost: 0,
+        spent: 0,
+        stockBought: 0,
+        profit: 0,
+      };
       trend.push(row);
       rowOf[row.month] = row;
     }
@@ -114,14 +140,34 @@ router.get('/insights', async (req, res) => {
     let paymentCount = 0;
     payments.forEach((p) => {
       const key = monthKey(p.paidOn);
-      if (rowOf[key]) rowOf[key].earned += p.amount;
+      if (rowOf[key]) {
+        rowOf[key].earned += p.amount;
+        rowOf[key].feesEarned += p.amount;
+      }
       if (key === range.key) paymentCount += 1;
+    });
+
+    let shopSaleCount = 0;
+    sales.forEach((s) => {
+      const key = monthKey(s.soldOn);
+      if (rowOf[key]) {
+        rowOf[key].earned += s.total;
+        rowOf[key].shopEarned += s.total;
+        rowOf[key].shopCost += (s.costPrice || 0) * s.quantity;
+      }
+      if (key === range.key) shopSaleCount += 1;
     });
 
     const categories = {};
     let expenseCount = 0;
+    let stockBoughtCount = 0;
     expenses.forEach((e) => {
       const key = monthKey(e.date);
+      if (e.category === 'Supplements') {
+        if (rowOf[key]) rowOf[key].stockBought += e.amount;
+        if (key === range.key) stockBoughtCount += 1;
+        return;
+      }
       if (rowOf[key]) rowOf[key].spent += e.amount;
       if (key === range.key) {
         expenseCount += 1;
@@ -134,7 +180,7 @@ router.get('/insights', async (req, res) => {
     });
 
     trend.forEach((row) => {
-      row.profit = row.earned - row.spent;
+      row.profit = row.earned - row.shopCost - row.spent;
     });
 
     const selected = rowOf[range.key];
@@ -145,9 +191,15 @@ router.get('/insights', async (req, res) => {
     res.json({
       month: range.key,
       earned: selected.earned,
+      feesEarned: selected.feesEarned,
+      shopEarned: selected.shopEarned,
+      shopCost: selected.shopCost,
+      stockBought: selected.stockBought,
+      stockBoughtCount: stockBoughtCount,
       spent: selected.spent,
       profit: selected.profit,
       paymentCount: paymentCount,
+      shopSaleCount: shopSaleCount,
       expenseCount: expenseCount,
       byCategory: byCategory,
       trend: trend,
@@ -247,6 +299,9 @@ router.put('/:id', async (req, res) => {
     if (!expense) {
       return res.status(404).json({ error: 'Expense not found' });
     }
+    if (await isLocked(expense, req.gymId)) {
+      return res.status(400).json({ error: LOCKED_MESSAGE });
+    }
 
     if (body.date !== undefined) {
       const date = parseDay(body.date);
@@ -296,13 +351,17 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = await Expense.findOneAndDelete({
+    const found = await Expense.findOne({
       _id: req.params.id,
       gymId: req.gymId,
     });
-    if (!deleted) {
+    if (!found) {
       return res.status(404).json({ error: 'Expense not found' });
     }
+    if (await isLocked(found, req.gymId)) {
+      return res.status(400).json({ error: LOCKED_MESSAGE });
+    }
+    await Expense.deleteOne({ _id: found._id, gymId: req.gymId });
     res.json({ message: 'Expense deleted' });
   } catch (err) {
     res.status(400).json({ error: err.message });

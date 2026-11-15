@@ -22,6 +22,7 @@ app.use('/api/packages', requireLogin, require('./routes/packages'));
 app.use('/api/payments', requireLogin, require('./routes/payments'));
 app.use('/api/settings', requireLogin, require('./routes/settings'));
 app.use('/api/expenses', requireLogin, require('./routes/expenses'));
+app.use('/api/shop', requireLogin, require('./routes/shop'));
 
 app.get('/', (req, res) => {
   res.send('Gym app backend is running');
