@@ -1,10 +1,10 @@
 # Gym App 🏋️
 
-A simple gym management app for small gyms that cannot afford fingerprint entry systems.
+A simple gym management app for small gyms that cannot afford fingerprint entry systems. Many gyms can sign up, and every gym sees only its own data.
 
-The owner logs in, adds **packages** (name, fee, days) and **members** (name, phone, photo, package). The app works out each member's next fee due date, shows who is late or due soon, records every payment (also part payments), prints a payment slip, and opens **WhatsApp** with a ready reminder message.
+A gym owner signs up on the website, adds **packages** (name, fee, days) and **members** (name, phone, photo, package). The app works out each member's next fee due date, shows who is late or due soon, records every payment (also part payments), prints a payment slip, and opens **WhatsApp** with a ready reminder message.
 
-Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice project.
+Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice project. The product name for now is **GymDesk**.
 
 **Online:** https://gym-app-ehn.pages.dev (the backend runs on a free plan, so the first visit after a quiet time can take about a minute)
 
@@ -26,18 +26,28 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 
 ## Features
 
+**Landing page and sign up**
+- The first page a visitor sees: top bar with Login and Sign up, a headline, an example due list, features, how it works in 3 steps, a screenshot box, FAQ and a footer. It works on phones
+- Sign up for a new gym: gym name, username and password (at least 8 characters). The new owner is logged in at once and sees an empty gym
+- At most 20 sign ups per hour from one address
+
+**Many gyms, separate data**
+- Every gym sees only its own members, packages, payments, expenses and settings
+- The gym comes only from the login token, never from the browser, so a gym cannot ask for the data of another gym
+- Two gyms can both have a package called Gold
+
 **Owner login and security**
 - The owner must log in with a username and password before using the app
 - Log out button in the side menu
-- Every backend address (except login and the gym name) needs a valid token, so the data is protected even if someone calls the API directly
+- Every backend address (except login and sign up) needs a valid token, so the data is protected even if someone calls the API directly
 - Passwords are never saved. Only a scrambled copy (bcrypt hash) is saved
-- The token expires after 7 days
+- The token expires after 7 days. An old token without a gym stops working (log in again)
 - 5 wrong login tries from one address block login for 15 minutes
 - A wrong username and a wrong password give the same answer and take the same time
-- The first owner is created with a small script (`node seed.js`), not by hand
+- On an empty database, the first gym and owner can also be created with a small script (`node seed.js`)
 
 **Settings**
-- Gym name, phone and address (they show on the payment slips and on the login screen)
+- Gym name, phone and address (they show on the payment slips and in the side menu)
 - Owner name and owner photo (they show on the Dashboard and in the side menu). Choose a picture from the PC or use the live camera
 - Change the username or password. The current password is always needed, and a new password must have at least 8 characters
 
@@ -59,7 +69,7 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - Mark as paid: choose how it was paid (Cash, JazzCash, Easypaisa or Bank), save a payment record, and move the due date forward when the fee is fully paid
 - Part payments: if a member pays only a part of the fee, the due date stays, the rest is saved as a balance ("Rs 2,500 left" shows in red), and the next payment starts with that balance
 - An amount bigger than what the member owes is refused (it protects against a typing mistake)
-- For Bank payments, a picture of the bank slip can be attached (optional)
+- For Bank payments, a picture of the bank slip can be attached (optional). It is made smaller before it is saved
 - WhatsApp reminder with a message that changes with the situation (late, due today, days left, or the remaining balance)
 
 **Member details page**
@@ -138,18 +148,21 @@ gym-app/
   backend/
     server.js            reads .env, checks JWT_SECRET, connects to MongoDB and listens
     app.js               the Express app: CORS, JSON, login guard and all routes
-    seed.js              creates the first owner (run once on a new database)
-    createOwner.js       creates the owner or resets the password
+    seed.js              creates the first gym and owner (run once on an empty database)
+    createOwner.js       resets the password of a username
+    migrate.js           gave the old data its first gymId (safe to run again)
     backup.js            saves every collection as JSON (node backup.js)
+    checkPictureSizes.js shows how much space the pictures use (read only)
     Dockerfile           recipe for the online host
-    models/              Member.js, Package.js, Payment.js, Owner.js, Setting.js, Expense.js
+    models/              Gym.js, Member.js, Package.js, Payment.js, Owner.js, Setting.js, Expense.js
     routes/              members.js, packages.js, payments.js, auth.js, settings.js, expenses.js
-    middleware/          requireLogin.js (the login guard)
-    tests/               helpers.js, auth.test.js, payments.test.js, packages.test.js, balance.test.js
+    middleware/          requireLogin.js (the login guard, sets req.gymId from the token)
+    tests/               helpers.js, auth.test.js, payments.test.js, packages.test.js,
+                         balance.test.js, slip.test.js, isolation.test.js, signup.test.js
   frontend/
     src/
       main.jsx           starts React
-      App.jsx            layout, side menu and routes
+      App.jsx            public routes (landing, login, sign up) or the app with the side menu
       utils.js           API address, status rule, dates, WhatsApp, photo resize
       auth.js            keeps the login token and sends it with every request
       PayBox.jsx         the Mark as paid box (amount, method, bank slip)
@@ -157,8 +170,8 @@ gym-app/
       CameraCapture.jsx  live camera photo box
       App.css            styles
       SettingsContext    gym and owner settings shared by all pages
-      pages/             Login, Dashboard, Members, MemberDetails, Packages,
-                         PaymentHistory, Settings, Expenses
+      pages/             Landing (and Landing.css), Login, Signup, Dashboard, Members,
+                         MemberDetails, Packages, PaymentHistory, Settings, Expenses
   docs/                  screenshots
 ```
 
@@ -166,19 +179,19 @@ gym-app/
 
 Base address: `http://localhost:5000/api`
 
-Everything needs a login token (sent with every request) except the two open addresses marked "Open".
+Everything needs a login token (sent with every request) except the two open addresses marked "Open". Every address works only on the gym in the token: a member, package, payment or expense of another gym is simply not found (404).
 
 | Method | Address | What it does |
 | --- | --- | --- |
-| POST | `/auth/login` | Open. Send `username` and `password`, get a token back |
-| GET | `/auth/gym` | Open. The gym name only (the login screen shows it) |
+| POST | `/auth/login` | Open. Send `username` and `password`, get a token back (the token carries the gym) |
+| POST | `/auth/signup` | Open. Send `gymName`, `username` and `password` (8 to 100 characters). Makes a new gym with its owner and answers with a token. At most 20 per hour from one address (then 429) |
 | GET | `/members` | All members, soonest due date first (each has a `balance`) |
 | POST | `/members` | Add a member. Send `name`, `phone`, `packageId` and optional `photo` |
 | PUT | `/members/:id` | Edit name, phone, photo (an empty `photo` removes it), package (`packageId`), due date (`nextDueDate`) or start a new package today (`startToday: true`, refused while a balance is open) |
 | PUT | `/members/:id/pay` | Mark as paid. Optional `amount` (default: what the member owes), `method` (Cash, JazzCash, Easypaisa, Bank) and `slipImage`. A full payment moves the due date; a part payment saves a balance. Answers with `{ member, payment }` |
-| DELETE | `/members/:id` | Delete a member |
+| DELETE | `/members/:id` | Delete a member (404 if it is not in your gym) |
 | GET | `/packages` | All packages, cheapest first |
-| POST | `/packages` | Add a package. Send `name`, `fee`, `durationDays`, `features` |
+| POST | `/packages` | Add a package. Send `name`, `fee`, `durationDays`, `features`. The name must be new inside your gym |
 | PUT | `/packages/:id` | Edit a package (also renames it on its members) |
 | DELETE | `/packages/:id` | Delete a package (refused if members use it) |
 | GET | `/payments` | All payments, newest first, without slip pictures. Use `?memberId=...` for one member |
@@ -193,13 +206,13 @@ Everything needs a login token (sent with every request) except the two open add
 | GET | `/expenses/:id/bill` | The bill picture of one expense (404 if there is none) |
 | POST | `/expenses` | Add an expense. Send `date` (2026-11-30), `category`, `amount`, optional `note` and optional `billImage` |
 | PUT | `/expenses/:id` | Edit an expense (only the fields sent). `billImage`: leave it out to keep the picture, send an empty text to remove it |
-| DELETE | `/expenses/:id` | Delete an expense |
+| DELETE | `/expenses/:id` | Delete an expense (404 if it is not in your gym) |
 
 Without a valid token, these addresses answer `401` with `{"error":"Please log in"}`.
 
 ## How to run it
 
-You need Node.js and a free MongoDB Atlas database. Each gym uses its own database and has one owner.
+You need Node.js and a free MongoDB Atlas database. All gyms share the one database, and every document has a `gymId`.
 
 **1. Download the project**
 
@@ -230,13 +243,22 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Never share the `.env` file and never upload it to GitHub.
 
-**3. Create the owner (only once on a new database)**
+**3. Create the first gym (optional, only on an empty database)**
 
 ```
 node seed.js
 ```
 
-It asks for a username and a password (at least 8 characters) and creates the owner. If an owner already exists, it changes nothing.
+It asks for the gym name, a username and a password (at least 8 characters) and creates the gym, its owner and its settings. If an owner already exists, it changes nothing. You can skip this step and use Sign up on the website instead.
+
+If your database is from before the many-gyms change (documents without a `gymId`), run these once in the backend folder:
+
+```
+node backup.js
+node migrate.js
+```
+
+`migrate.js` makes the first gym from the old settings and gives every old document its `gymId`. It is safe to run again.
 
 **4. Start the backend**
 
@@ -254,7 +276,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 in the browser and log in with the username and password from step 3.
+Open http://localhost:5173 in the browser. You see the landing page. Use Sign up to make a gym, or Login if you made the owner with `seed.js`.
 
 The backend does not reload by itself. After any change in the backend, stop it with Ctrl + C and run `node server.js` again.
 
@@ -267,11 +289,13 @@ npm test
 
 The tests use Jest and supertest on the Express app (`app.js`) with an in-memory MongoDB (mongodb-memory-server), so your real database is never touched and the backend does not need to be running. The first run downloads a test database and can take a few minutes.
 
-What is tested (53 tests):
+What is tested (90 tests in 7 suites):
 - Login: right and wrong password, unknown username, the 5 wrong tries block, and that every data address answers 401 without a token
+- Sign up: a new gym gets a working token and an empty gym, a taken username, a short password, a bad username or gym name are refused, two new gyms never see each other, and the sign up limit (429)
+- Two-gym isolation: gym B cannot see, edit, delete or undo anything of gym A (members, packages, payments, slips, bills, insights, settings and the payment summary), a `gymId` sent in the body or the address is ignored, an old token without a gym is refused, and two gyms can use the same package name
 - Packages: add, sort, validation, duplicate names, rename (members follow), delete rules
 - Members: add and validation (name, phone, photo, package)
-- Mark as paid: fee and method, due date for a member who is not late and for a late member, bad amounts and methods, bank slip door
+- Mark as paid: fee and method, due date for a member who is not late and for a late member, bad amounts and methods, bank slip door and its size limit
 - Undo: the due date and balance come back, only the newest payment can be undone
 - Part payments: balance, due date stays, paying the rest, late members, amounts above what is owed, new package while a balance is open, old payments without balance fields
 
@@ -285,7 +309,9 @@ What is tested (53 tests):
 
 Notes:
 - The Dockerfile runs `npm ci --omit=dev`, so the test tools are not installed online. Always commit `package.json` and `package-lock.json` together, or the online build fails.
-- The free SnapDeploy backend sleeps after 15 minutes without visitors (the first visit takes about a minute) and has a limited number of deploys and hours. A real gym would need an always-on host.
+- The website and the backend must be updated together: the landing page and Sign up need the new backend. After the new backend is online, run `node migrate.js` once more, because the PC and the online backend share one database.
+- The free SnapDeploy backend sleeps after 15 minutes without visitors (the first visit takes about a minute) and has a limited number of deploys and hours (5 deploys per 12 hours, and failed builds count, so read the build log before deploying again). A real gym would need an always-on host.
+- All gyms share the 512 MB of the free Atlas database.
 - The camera needs https, which the online website has.
 - Use a different `JWT_SECRET` online than on your own computer.
 
@@ -294,30 +320,33 @@ Notes:
 - **The server is the source of truth.** The screen sends only name, phone and package. The backend works out the fee and the due date, so the rules live in one safe place.
 - **Validation on the server.** Name, phone, package fields, payment method, amounts and picture size are checked in the backend, because anyone can call the API without the screen.
 - **The backend is locked, not only the screen.** A login page alone only hides the pages, so every API address checks the token.
+- **The gym comes only from the token.** The token is signed, and `requireLogin` saves its `gymId` in `req.gymId`. Every query filters by it, and one document is found with `findOne({ _id, gymId })`, never `findById`. The browser never sends the gym, so it cannot ask for another gym. Two-gym tests prove it.
+- **Package names are unique inside one gym.** The index is on `gymId` and `name`, so two gyms can both have a package called Gold.
 - **Passwords are hashed.** Only a bcrypt hash is saved, and the login gives the same answer for a wrong username or a wrong password.
 - **A member keeps its own copy of the package name and fee.** If the owner changes a package price later, old members and old payments do not change.
 - **Part payments keep the due date.** The due date moves only when the fee is fully paid, so a member who paid only a part stays Late or Due soon and is not forgotten. Each payment saves the balance before and after it, so Undo can put both back.
-- **Photos are saved as small text (200x200 JPEG).** This is simple for a small gym. For thousands of members, files in cloud storage would be better.
+- **Photos are saved as small text (200x200 JPEG).** This is simple for a small gym. Bank slips are resized and limited too. For thousands of members, files in cloud storage would be better.
 - **Mark as paid does not lose days.** If the member is not late yet, the new period starts from the old due date, not from today.
 - **Payment first, then member.** Mark as paid saves the payment first, and if saving the member fails, the payment is removed again, so the two always match.
 - **One door does the month maths.** `GET /expenses/insights` reads the payments and the expenses together, adds them by month and sends a small answer, so the screen does no maths.
 - **Bill pictures and bank slips are fetched only when opened.** The lists send only `hasBill` or `hasSlip`, so they stay fast.
 - **The app and the server are two files.** `app.js` builds the Express app and `server.js` starts it, so the tests can call the app without a port and with a fake database.
-- **One gym, one database, one owner.** The first owner is made with `seed.js`.
+- **Sign up cleans up after itself.** It makes the gym, the owner and the settings, and if one step fails the records already made are removed. A migration script moved the first gym's old data without losing anything.
 
 ## Known limits and ideas for later
 
-- Only one owner login (no staff accounts yet)
-- No "forgot password" (the owner can reset it with a script)
-- The login try limit is kept in memory and resets when the backend restarts
+- One owner login for each gym (no staff accounts yet)
+- No "forgot password" (the password can be reset with `node createOwner.js username "newpassword"`)
+- The login and sign up limits are kept in memory and reset when the backend restarts
+- No way yet to delete a whole gym and its data
+- The landing page has a screenshot box and no contact phone yet
 - WhatsApp receipt after a payment (a WhatsApp link can send only text, not a file)
 - Expenses that repeat every month (rent, internet) filled in by themselves
 - Reminders are sent by the owner with one click (not automatic)
 - Phone numbers that start with 0 are treated as Pakistan numbers (+92) for WhatsApp
-- Pictures are still saved in the database (move them to file storage before the free 512 MB fills)
+- Pictures are still saved in the database, only smaller (move them to file storage before the free 512 MB fills)
 - Tests do not cover editing members, settings and expenses yet
-- The free backend sleeps; a real gym needs an always-on host
-- A landing page and sign up for many gyms (today one gym uses one database)
+- The free backend sleeps and has limited hours and deploys; it is fine for practice and a few gyms, not for many paying gyms (an always-on host costs about $12 a month)
 
 ## Author
 
