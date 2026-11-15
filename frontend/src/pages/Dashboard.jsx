@@ -275,7 +275,14 @@ function Dashboard({ members, loadMembers }) {
             </div>
             <div className="collect-label">
               {insights.profit < 0 ? 'Loss' : 'Profit'} this month (earned Rs{' '}
-              {insights.earned.toLocaleString()}, spent Rs{' '}
+              {insights.earned.toLocaleString()}
+              {insights.shopEarned > 0
+                ? ' incl. shop Rs ' + insights.shopEarned.toLocaleString()
+                : ''}
+              {insights.shopCost > 0
+                ? ', cost of sold items Rs ' + insights.shopCost.toLocaleString()
+                : ''}
+              , spent Rs{' '}
               {insights.spent.toLocaleString()})
             </div>
           </div>

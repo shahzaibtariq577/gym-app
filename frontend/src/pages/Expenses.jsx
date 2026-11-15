@@ -9,6 +9,7 @@ const CATEGORIES = [
   { name: 'New equipment', icon: '🏋️' },
   { name: 'Internet', icon: '🌐' },
   { name: 'Cleaning', icon: '🧹' },
+  { name: 'Supplements', icon: '🧴' },
   { name: 'Other', icon: '📦' },
 ]
 const MAX_BILL_TEXT = 700000
@@ -423,6 +424,15 @@ function Expenses() {
               </label>
             </div>
 
+            {category === 'Supplements' && (
+              <p className="info-note">
+                Supplements are stock you buy for the Shop. They are not counted
+                as a cost until the products are sold. Typing one here does NOT
+                add stock. To add stock, use the Buy stock button in the Shop
+                page, which adds the stock and this expense together.
+              </p>
+            )}
+
             <div style={{ marginTop: '12px' }}>
               <span className="photo-title">Bill picture (optional)</span>
               <div
@@ -498,6 +508,10 @@ function Expenses() {
                   Earned ({insights.paymentCount}{' '}
                   {insights.paymentCount === 1 ? 'payment' : 'payments'})
                 </div>
+                <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                  Fees {money(insights.feesEarned)} + Shop{' '}
+                  {money(insights.shopEarned)}
+                </div>
               </div>
             </div>
             <div className="summary-box orange">
@@ -509,6 +523,10 @@ function Expenses() {
                 <div className="summary-label">
                   Spent ({insights.expenseCount}{' '}
                   {insights.expenseCount === 1 ? 'expense' : 'expenses'})
+                </div>
+                <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                  Stock bought {money(insights.stockBought)} (not counted, see
+                  Shop)
                 </div>
               </div>
             </div>
@@ -523,6 +541,9 @@ function Expenses() {
                 </div>
                 <div className="summary-label">
                   {insights.profit >= 0 ? 'Profit' : 'Loss'}
+                </div>
+                <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                  After cost of sold items {money(insights.shopCost)}
                 </div>
               </div>
             </div>
@@ -635,7 +656,7 @@ function Expenses() {
               <span style={{ color: '#16a34a' }}>■</span> Earned{' '}
               <span style={{ color: '#ea7a0c', marginLeft: '10px' }}>■</span> Spent
               <span style={{ marginLeft: '10px' }}>
-                The number under each month is the profit (earned minus spent).
+                The number under each month is the profit (earned minus cost of sold items and spent).
               </span>
             </p>
           </div>
@@ -688,20 +709,31 @@ function Expenses() {
                       )}
                     </td>
                     <td>
-                      <button
-                        className="grey icon-btn"
-                        title="Edit"
-                        onClick={() => openEdit(x)}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="danger icon-btn"
-                        title="Delete"
-                        onClick={() => handleDelete(x)}
-                      >
-                        🗑️
-                      </button>
+                      {x.purchaseId ? (
+                        <span
+                          className="badge orange"
+                          title="Remove it from Shop > Purchase history"
+                        >
+                          🔒 Shop purchase
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            className="grey icon-btn"
+                            title="Edit"
+                            onClick={() => openEdit(x)}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="danger icon-btn"
+                            title="Delete"
+                            onClick={() => handleDelete(x)}
+                          >
+                            🗑️
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}

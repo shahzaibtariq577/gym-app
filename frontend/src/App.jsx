@@ -12,6 +12,7 @@ import Signup from './pages/Signup'
 import Landing from './pages/Landing'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
+import Shop from './pages/Shop'
 import SettingsContext from './SettingsContext'
 import { getToken, clearToken } from './auth'
 
@@ -104,6 +105,9 @@ function Layout({ onLogout }) {
           <NavLink to="/payments" className={navClass}>
             🧾 Payment History
           </NavLink>
+          <NavLink to="/shop" className={navClass}>
+            🛒 Shop
+          </NavLink>
           <NavLink to="/expenses" className={navClass}>
             💸 Expenses
           </NavLink>
@@ -191,6 +195,7 @@ function Layout({ onLogout }) {
               }
             />
             <Route path="/payments" element={<PaymentHistory />} />
+            <Route path="/shop" element={<Shop />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
