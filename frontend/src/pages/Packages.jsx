@@ -314,7 +314,7 @@ function Packages({ packages, members, loadPackages, loadMembers }) {
                 <>
                   <div className="pkg-name">{p.name}</div>
                   <div className="pkg-days">{p.durationDays} Days</div>
-                  <div className="pkg-fee">Rs {p.fee}</div>
+                  <div className="pkg-fee">Rs {p.fee.toLocaleString()}</div>
                   {features.length > 0 ? (
                     <ul className="pkg-features">
                       {features.map((f) => (

@@ -18,6 +18,7 @@ function Dashboard({ members, loadMembers }) {
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
   const [insights, setInsights] = useState(null)
+  const [lowStock, setLowStock] = useState(0)
   const [bigMember, setBigMember] = useState(null)
   const [payMember, setPayMember] = useState(null)
   const [message, setMessage] = useState('')
@@ -41,9 +42,19 @@ function Dashboard({ members, loadMembers }) {
       .catch(() => {})
   }
 
+  function loadLowStock() {
+    fetch(API + '/shop/summary')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error) setLowStock(data.lowStock || 0)
+      })
+      .catch(() => {})
+  }
+
   useEffect(() => {
     loadSummary()
     loadInsights()
+    loadLowStock()
   }, [])
 
   useEffect(() => {
@@ -257,6 +268,28 @@ function Dashboard({ members, loadMembers }) {
         </div>
       )}
 
+      {lowStock > 0 && (
+        <div className="collect" style={{ borderColor: '#ea7a0c' }}>
+          <div className="collect-icon" style={{ background: '#ea7a0c' }}>
+            📦
+          </div>
+          <div>
+            <div className="collect-amount">{lowStock}</div>
+            <div className="collect-label">
+              Shop {lowStock === 1 ? 'product is' : 'products are'} low or out
+              of stock
+            </div>
+          </div>
+          <button
+            className="grey"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => navigate('/shop')}
+          >
+            View shop →
+          </button>
+        </div>
+      )}
+
       {insights && (
         <div
           className="collect"
@@ -360,7 +393,7 @@ function Dashboard({ members, loadMembers }) {
                       </td>
                       <td>{m.phone}</td>
                       <td>
-                        Rs {m.fee}
+                        Rs {m.fee.toLocaleString()}
                         {m.balance > 0 && (
                           <div
                             style={{

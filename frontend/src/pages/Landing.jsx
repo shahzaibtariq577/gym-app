@@ -149,9 +149,13 @@ function Landing() {
 
       <section className="lp-section" id="screens">
         <h2>See the dashboard</h2>
-        <div className="lp-screen">
-          <span>Dashboard screenshot goes here</span>
-        </div>
+        <img
+          className="lp-shot"
+          src="/dashboard.png"
+          width="1345"
+          height="907"
+          alt="The GymDesk dashboard with late and due soon members, fees collected this month and monthly profit"
+        />
       </section>
 
       <section className="lp-section lp-tint" id="faq">

@@ -40,6 +40,7 @@ const saleSchema = new mongoose.Schema(
     amountPaid: { type: Number },
     payments: { type: [paymentSchema], default: [] },
     buyer: { type: String, default: '', trim: true },
+    buyerPhone: { type: String, default: '', trim: true },
     note: { type: String, default: '', trim: true },
   },
   { timestamps: true }

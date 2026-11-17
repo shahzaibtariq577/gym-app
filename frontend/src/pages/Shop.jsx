@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API, formatDate, resizePhoto } from '../utils'
+import { API, formatDate, resizePhoto, whatsappNumber } from '../utils'
 import ShopSlip from '../ShopSlip'
 
 function money(number) {
@@ -77,6 +77,17 @@ function statusColor(status) {
   return 'red'
 }
 
+function remindBuyer(sale) {
+  const text =
+    'Hello ' + (sale.buyer || 'customer') + ', you still owe Rs ' +
+    sale.balance.toLocaleString() + ' for ' + sale.quantity + ' x ' +
+    sale.productName + ' bought on ' + formatDate(sale.soldOn) +
+    '. Please pay when you can. Thank you!'
+  const url =
+    'https://wa.me/' + whatsappNumber(sale.buyerPhone) + '?text=' + encodeURIComponent(text)
+  window.open(url, '_blank')
+}
+
 function PictureField({ title, value, buttonText, onPick, onRemove }) {
   return (
     <div style={{ marginTop: '10px' }}>
@@ -148,6 +159,7 @@ function Shop() {
   const [quantity, setQuantity] = useState('1')
   const [unitPrice, setUnitPrice] = useState('')
   const [buyer, setBuyer] = useState('')
+  const [buyerPhone, setBuyerPhone] = useState('')
   const [note, setNote] = useState('')
   const [sellError, setSellError] = useState('')
   const [selling, setSelling] = useState(false)
@@ -372,6 +384,7 @@ function Shop() {
     setQuantity('1')
     setUnitPrice(String(p.salePrice))
     setBuyer('')
+    setBuyerPhone('')
     setNote('')
     setMethod('Cash')
     setSlip('')
@@ -620,6 +633,11 @@ function Shop() {
       setSellError('Error: Please write the buyer name when the customer pays less')
       return
     }
+    const phoneDigits = buyerPhone.replace(/\D/g, '')
+    if (buyerPhone.trim() && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+      setSellError('Error: Buyer phone must have 10 to 15 digits')
+      return
+    }
 
     setSellError('')
     setSelling(true)
@@ -632,6 +650,7 @@ function Shop() {
         quantity: qty,
         unitPrice: Number(unitPrice),
         buyer: buyer,
+        buyerPhone: buyerPhone.trim(),
         note: note,
         amountPaid: paid,
         method: paid > 0 ? method : 'Cash',
@@ -799,6 +818,15 @@ function Shop() {
                   placeholder="e.g. Ali"
                   value={buyer}
                   onChange={(e) => setBuyer(e.target.value)}
+                />
+              </label>
+              <label className="form-field">
+                Buyer phone (optional, for reminders)
+                <input
+                  maxLength={30}
+                  placeholder="03xxxxxxxxx"
+                  value={buyerPhone}
+                  onChange={(e) => setBuyerPhone(e.target.value)}
                 />
               </label>
               <label className="form-field">
@@ -1185,7 +1213,7 @@ function Shop() {
                   {money(Math.abs(summary.profit))}
                 </div>
                 <div className="summary-label">
-                  Shop {summary.profit >= 0 ? 'profit' : 'loss'} (sale price minus
+                  Gross {summary.profit >= 0 ? 'profit' : 'loss'} (sale price minus
                   buying price)
                 </div>
                 <div style={{ fontSize: '12px', marginTop: '2px' }}>
@@ -1561,7 +1589,14 @@ function Shop() {
                       )}
                     </td>
                     <td>{money(s.profit)}</td>
-                    <td>{s.buyer || '-'}</td>
+                    <td>
+                      {s.buyer || '-'}
+                      {s.buyerPhone && (
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {s.buyerPhone}
+                        </div>
+                      )}
+                    </td>
                     <td>{s.amountPaid > 0 ? s.method || 'Cash' : '-'}</td>
                     <td>
                       <button
@@ -1574,6 +1609,15 @@ function Shop() {
                       {s.hasSlip ? ' 📎' : ''}
                     </td>
                     <td>
+                      {s.balance > 0 && s.buyerPhone && (
+                        <button
+                          className="green icon-btn"
+                          title="Send reminder on WhatsApp"
+                          onClick={() => remindBuyer(s)}
+                        >
+                          💬
+                        </button>
+                      )}
                       {s.balance > 0 && (
                         <button
                           className="green"

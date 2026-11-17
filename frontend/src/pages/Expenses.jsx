@@ -105,6 +105,15 @@ function Expenses() {
 
   // The big bill picture window
   const [viewBill, setViewBill] = useState(null)
+  const [search, setSearch] = useState('')
+  const query = search.trim().toLowerCase()
+  const shown = expenses.filter(
+    (x) =>
+      !query ||
+      (x.category + ' ' + (x.note || '') + ' ' + x.amount + ' ' + formatDate(x.date))
+        .toLowerCase()
+        .includes(query)
+  )
 
   function loadAll(m) {
     setError('')
@@ -665,15 +674,28 @@ function Expenses() {
 
       <div className="card">
         <h2>
-          🧾 Expenses in {monthLabel(month)} ({expenses.length})
+          🧾 Expenses in {monthLabel(month)} (
+          {query ? shown.length + ' of ' + expenses.length : expenses.length})
         </h2>
+
+        <div className="toolbar">
+          <input
+            placeholder="🔍 Search by category, note, amount or date..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
         {loading && <p>Loading expenses...</p>}
         {!loading && !error && expenses.length === 0 && (
           <p>No expenses in this month. Click + Add expense.</p>
         )}
 
-        {expenses.length > 0 && (
+        {!loading && expenses.length > 0 && shown.length === 0 && (
+          <p>No expenses match this search.</p>
+        )}
+
+        {shown.length > 0 && (
           <div className="table-wrap">
             <table>
               <thead>
@@ -687,7 +709,7 @@ function Expenses() {
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((x) => (
+                {shown.map((x) => (
                   <tr key={x._id}>
                     <td>{formatDate(x.date)}</td>
                     <td>

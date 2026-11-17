@@ -245,6 +245,20 @@ router.post('/sales', async (req, res) => {
       return res.status(400).json({ error: 'Note is too long (max 200 letters)' });
     }
 
+    const buyerPhone = String(body.buyerPhone || '').trim();
+    if (buyerPhone) {
+      const phoneDigits = buyerPhone.replace(/\D/g, '');
+      if (
+        buyerPhone.length > 30 ||
+        phoneDigits.length < 10 ||
+        phoneDigits.length > 15
+      ) {
+        return res
+          .status(400)
+          .json({ error: 'Buyer phone must have 10 to 15 digits' });
+      }
+    }
+
     let method =
       body.method === undefined || body.method === '' ? 'Cash' : body.method;
     if (!METHODS.includes(method)) {
@@ -331,6 +345,7 @@ router.post('/sales', async (req, res) => {
         slipImage: slip,
         hasSlip: slip !== '',
         buyer: buyer,
+        buyerPhone: buyerPhone,
         note: note,
       });
       res.status(201).json(shapeSale(sale));

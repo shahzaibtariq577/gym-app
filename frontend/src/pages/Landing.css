@@ -214,16 +214,12 @@
   justify-content: center;
 }
 
-.lp-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 320px;
-  border: 2px dashed #c7c9e8;
+.lp-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--lp-line);
   border-radius: 16px;
-  background: #f7f7fd;
-  color: #6b7280;
-  font-weight: 600;
 }
 
 .lp-faq {
@@ -346,10 +342,6 @@
   .lp-steps {
     grid-template-columns: 1fr;
     gap: 28px;
-  }
-
-  .lp-screen {
-    min-height: 200px;
   }
 
   .lp-final {
