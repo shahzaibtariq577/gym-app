@@ -2,11 +2,11 @@
 
 A simple gym management app for small gyms that cannot afford fingerprint entry systems. Many gyms can sign up, and every gym sees only its own data.
 
-A gym owner signs up on the website, adds **packages** (name, fee, days) and **members** (name, phone, photo, package). The app works out each member's next fee due date, shows who is late or due soon, records every payment (also part payments), prints a payment slip, and opens **WhatsApp** with a ready reminder message. The owner can also run a small **Shop** (protein, drinks and so on): sell products, buy stock, and let a customer pay later.
+A gym owner signs up on the website, adds **packages** (name, fee, days) and **members** (name, phone, photo, package). The app works out each member's next fee due date, shows who is late or due soon, records every payment (also part payments), prints a payment slip, and opens **WhatsApp** with a ready reminder message. Receipts can be sent on WhatsApp as a **PDF** or as a **link**. The owner can also run a small **Shop** (protein, drinks and so on): sell products, buy stock, and let a customer pay later.
 
 Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice project. The product name for now is **GymDesk**.
 
-**Online:** https://gym-app-ehn.pages.dev (the backend runs on a free plan, so the first visit after a quiet time can take about a minute). The Shop, Buy stock and credit sales are built and tested on my PC and go online with the next deploy.
+**Online:** https://gym-app-ehn.pages.dev (the backend runs on a free plan, so the first visit after a quiet time can take about a minute). The Shop, Buy stock, credit sales, buyer phone, reminder window and receipt links are built on my PC and go online with the next deploy.
 
 ## Screenshot
 
@@ -37,7 +37,7 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 ## Features
 
 **Landing page and sign up**
-- The first page a visitor sees: top bar with Login and Sign up, a headline, an example due list, features, how it works in 3 steps, a screenshot box, FAQ and a footer. It works on phones
+- The first page a visitor sees: top bar with Login and Sign up, a headline, an example due list, features, how it works in 3 steps, a screenshot of the dashboard, FAQ and a footer. It works on phones
 - Sign up for a new gym: gym name, username and password (at least 8 characters). The new owner is logged in at once and sees an empty gym
 - At most 20 sign ups per hour from one address
 
@@ -49,7 +49,7 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 **Owner login and security**
 - The owner must log in with a username and password before using the app
 - Log out button in the side menu
-- Every backend address (except login and sign up) needs a valid token, so the data is protected even if someone calls the API directly
+- Every backend address (except login, sign up and the public receipt address) needs a valid token, so the data is protected even if someone calls the API directly
 - Passwords are never saved. Only a scrambled copy (bcrypt hash) is saved
 - The token expires after 7 days. An old token without a gym stops working (log in again)
 - 5 wrong login tries from one address block login for 15 minutes
@@ -66,8 +66,10 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - Four clickable cards: Late, Due soon, OK and Total members (each opens the Members page with the right filter)
 - "Collected this month" card with the total and the number of payments (gym fees only)
 - "Unpaid balance" card with the total still owed by members who paid only a part (shown only when there is a balance)
+- "Low stock" card with the number of Shop products that have 5 or less left, and a button to the Shop (shown only when there is at least one)
 - "Profit this month" card (earned minus the cost of sold shop items minus spent, red and called Loss when it is below zero) with a button to the Expenses page
 - List of Late and Due soon members with their round photo and quick buttons: send WhatsApp reminder and mark as paid
+- "Remind all" button on that list, and a "Send reminders?" question when the app is opened and someone is late or due soon (see Reminders on WhatsApp)
 - Click a photo for a big popup, or click a name to open the member's details page
 
 **Members**
@@ -81,6 +83,12 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - An amount bigger than what the member owes is refused (it protects against a typing mistake)
 - For Bank payments, a picture of the bank slip can be attached (optional). It is made smaller before it is saved
 - WhatsApp reminder with a message that changes with the situation (late, due today, days left, or the remaining balance)
+
+**Reminders on WhatsApp**
+- When the app is opened and members are late or due soon, it asks "Send reminders?". The owner can answer "Yes, remind" or "Not now". The "Remind all" button on the Dashboard opens the same window at any time
+- The reminder window lists those members with their status. "Send next" opens WhatsApp for one member at a time, and every row has its own Send button
+- Members opened today show "✓ Opened" (kept in the browser for that day). Members without a valid phone number show "No phone"
+- Nothing is sent without the owner: a WhatsApp link only opens the member's chat with the text already written, and the owner presses Send inside WhatsApp. Fully automatic sending would need the paid WhatsApp Business API
 
 **Member details page**
 - Click a member's name to open it
@@ -101,12 +109,20 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - Month filter: This month, Last month, All, or pick any month; the search and the total follow the month
 - Export CSV: downloads the payments you see (Excel can open it)
 - Each payment shows its method, the remaining balance, and the slip picture if one was attached
-- Payment slip (receipt) with the gym name, phone and address from Settings, a stamp (PAID or PART PAID), the real remaining balance, and Print / Save as PDF
+- Payment slip (receipt) with the gym name, phone and address from Settings, a stamp (PAID or PART PAID), the real remaining balance, Print / Save as PDF, and the WhatsApp buttons (see Receipts on WhatsApp)
+
+**Receipts on WhatsApp**
+- **Send PDF on WhatsApp:** the receipt, with its stamp, is made as a PDF in the browser. On a phone the share sheet opens, and the owner picks WhatsApp and the chat. On a computer without file sharing, the PDF is saved in the Downloads folder and WhatsApp opens on the member's chat, so the owner attaches it with the 📎 button
+- **Send as text:** opens the member's chat with the receipt written as text (gym, receipt number, date, amount, remaining, next due date) and a link to the receipt
+- **Receipt link:** opens a public page (`/r/` and a long code) with the same stamped receipt and a Download PDF button. The member needs no login. The code has 32 random letters and numbers and is made only when the owner presses a send button. The page never shows the bank slip picture, the buyer phone number or any internal id
+- It works for gym fee receipts and for shop sale receipts
+- When the phone number is not known (for example in Payment History), WhatsApp opens and the owner picks the contact
 
 **Expenses and insights**
 - Add an expense with a date, a category (Electricity, Rent, Staff salary, Equipment repair, New equipment, Internet, Cleaning, Supplements or Other), an amount and an optional note
 - Optional picture of the bill (saved small, like the bank slip, and opened only when you click it)
 - Edit and delete an expense (not an expense made by a Shop purchase, see below)
+- Search the expenses of the month by category, note, amount or date
 - Month buttons (Previous and Next) to see any month, with the list of that month
 - Earned (gym fees plus shop sales), Spent (operating expenses, without Supplements) and Profit (earned minus the cost of sold shop items minus spent)
 - Supplements are stock bought for the Shop. They are shown as "stock bought" and are not a cost until the items are sold
@@ -115,12 +131,12 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 
 **Shop**
 - Products with a name (unique inside one gym), sale price, buying price, stock and an optional picture (click it to see it big)
-- Sell a product: quantity, price (starts as the sale price), buyer name, note, how the customer paid (Cash, JazzCash, Easypaisa or Bank) and an optional payment screenshot
+- Sell a product: quantity, price (starts as the sale price), buyer name, optional buyer phone (10 to 15 digits), note, how the customer paid (Cash, JazzCash, Easypaisa or Bank) and an optional payment screenshot
 - The stock goes down at the same moment, and two sales at once cannot sell the last item twice
 - Each sale saves the buying price and the profit of that day, so an old profit never changes when a price changes later
-- Sale receipt (S-number, PAID, PART PAID or UNPAID stamp, Print / Save as PDF, payment slip pictures)
-- Cards: Shop earned, Shop profit, Stock value, Stock bought, Items sold, Customers owe and Low stock (5 or less)
-- Best sellers of the month, month buttons, and a sales list with Status, Paid by, Slip, Collect and Undo
+- Sale receipt (S-number, PAID, PART PAID or UNPAID stamp, Print / Save as PDF, WhatsApp buttons, payment slip pictures)
+- Cards: Shop earned, Gross profit (sale price minus buying price), Stock value, Stock bought, Items sold, Customers owe and Low stock (5 or less)
+- Best sellers of the month, month buttons, and a sales list with Status, Buyer (and phone), Paid by, Slip, Collect and Undo
 - Undo a sale: the stock is put back and its payments are removed
 
 **Buy stock and purchase history**
@@ -136,6 +152,7 @@ Built with the MERN stack (MongoDB, Express, React, Node.js) as a practice proje
 - "Amount paid now" starts as the total. If it is less (or 0), the buyer name is required
 - Status of every sale: Paid, Part paid or Unpaid, with the balance (total minus paid)
 - Collect button: save a later payment with an amount (more than 0 and not more than the balance), a method and an optional slip
+- A 💬 button on an unpaid sale that has a buyer phone opens WhatsApp with a reminder of the amount owed
 - The receipt shows every payment and what the customer still owes
 - Old sales have no amountPaid and count as fully paid, so nothing had to be migrated
 - Money rule: the sale amount and the profit are counted on the sale date. The Customers owe card shows the unpaid total. Payment History shows money on the day it was received. The Dashboard Collected card stays gym fees only
@@ -183,13 +200,13 @@ Old payments (made before balance tracking) count as fully paid.
 
 | Part | Technology |
 | --- | --- |
-| Frontend | React, Vite, React Router |
+| Frontend | React, Vite, React Router, html2canvas and jsPDF (the receipt PDF) |
 | Backend | Node.js, Express |
 | Database | MongoDB Atlas with Mongoose |
 | Security | bcryptjs (password hash), jsonwebtoken (login token) |
 | Tests | Jest, supertest, mongodb-memory-server |
 | Hosting | Cloudflare Pages (website), SnapDeploy with a Dockerfile (backend), Atlas (database) |
-| Other | dotenv, cors, WhatsApp link (wa.me) |
+| Other | dotenv, cors, WhatsApp link (wa.me), Web Share (sends the PDF from a phone) |
 
 ## Project structure
 
@@ -206,25 +223,32 @@ gym-app/
     Dockerfile           recipe for the online host
     models/              Gym.js, Member.js, Package.js, Payment.js, Owner.js, Setting.js, Expense.js,
                          Product.js, Sale.js, Purchase.js
-    routes/              members.js, packages.js, payments.js, auth.js, settings.js, expenses.js, shop.js
+    routes/              members.js, packages.js, payments.js, auth.js, settings.js, expenses.js, shop.js,
+                         receipts.js (the open receipt address)
     middleware/          requireLogin.js (the login guard, sets req.gymId from the token)
     tests/               helpers.js, auth.test.js, payments.test.js, packages.test.js,
                          balance.test.js, slip.test.js, isolation.test.js, signup.test.js,
-                         shop.test.js, purchase.test.js, credit.test.js
+                         shop.test.js, purchase.test.js, credit.test.js, buyerphone.test.js,
+                         receipts.test.js
   frontend/
     src/
       main.jsx           starts React
-      App.jsx            public routes (landing, login, sign up) or the app with the side menu
-      utils.js           API address, status rule, dates, WhatsApp, photo resize
+      App.jsx            public routes (landing, login, sign up), the public receipt page,
+                         or the app with the side menu
+      utils.js           API address, status rule, dates, WhatsApp, reminder text, photo resize
       auth.js            keeps the login token and sends it with every request
       PayBox.jsx         the Mark as paid box (amount, method, bank slip)
-      Slip.jsx           the payment receipt
+      Slip.jsx           the payment receipt (also used by the public receipt page)
       ShopSlip.jsx       the shop sale receipt (Paid, Part paid or Unpaid)
+      ReminderBox.jsx    the window that sends WhatsApp reminders to late members one by one
+      receiptPdf.js      makes the receipt PDF, shares it, and asks the backend for the receipt link
       CameraCapture.jsx  live camera photo box
       App.css            styles
       SettingsContext    gym and owner settings shared by all pages
       pages/             Landing (and Landing.css), Login, Signup, Dashboard, Members,
-                         MemberDetails, Packages, PaymentHistory, Settings, Expenses, Shop
+                         MemberDetails, Packages, PaymentHistory, Settings, Expenses, Shop,
+                         ReceiptView (the public receipt page)
+    public/              dashboard.png (the picture on the landing page)
   docs/                  screenshots
 ```
 
@@ -232,12 +256,13 @@ gym-app/
 
 Base address: `http://localhost:5000/api`
 
-Everything needs a login token (sent with every request) except the two open addresses marked "Open". Every address works only on the gym in the token: a member, package, payment, expense, product, sale or purchase of another gym is simply not found (404).
+Everything needs a login token (sent with every request) except the three open addresses marked "Open". Every other address works only on the gym in the token: a member, package, payment, expense, product, sale or purchase of another gym is simply not found (404). The open receipt address works only with the long receipt code.
 
 | Method | Address | What it does |
 | --- | --- | --- |
 | POST | `/auth/login` | Open. Send `username` and `password`, get a token back (the token carries the gym) |
 | POST | `/auth/signup` | Open. Send `gymName`, `username` and `password` (8 to 100 characters). Makes a new gym with its owner and answers with a token. At most 20 per hour from one address (then 429) |
+| GET | `/receipts/:token` | Open. A receipt for the receipt link. The token is the 32-character code made by one of the two share addresses. Answers `{ type: "gym" or "shop", gymName, gymPhone, gymAddress, payment or sale }` without bank slip pictures, buyer phone and ids of the gym (404 for a wrong or unknown code) |
 | GET | `/members` | All members, soonest due date first (each has a `balance`) |
 | POST | `/members` | Add a member. Send `name`, `phone`, `packageId` and optional `photo` |
 | PUT | `/members/:id` | Edit name, phone, photo (an empty `photo` removes it), package (`packageId`), due date (`nextDueDate`) or start a new package today (`startToday: true`, refused while a balance is open) |
@@ -250,6 +275,7 @@ Everything needs a login token (sent with every request) except the two open add
 | GET | `/payments` | All payments, newest first, without slip pictures. Use `?memberId=...` for one member |
 | GET | `/payments/summary` | Total collected this month |
 | GET | `/payments/:id/slip` | The bank slip picture of one payment (404 if there is none) |
+| POST | `/payments/:id/share` | Makes the receipt code of a payment (the same code is given every time) and answers `{ token }` for the receipt link |
 | DELETE | `/payments/:id` | Undo a payment. Only the newest payment of a member; the due date and the balance go back |
 | GET | `/settings` | The gym name, phone, address, owner name and owner photo |
 | PUT | `/settings` | Save the gym and owner profile |
@@ -264,10 +290,11 @@ Everything needs a login token (sent with every request) except the two open add
 | POST | `/shop/products` | Add a product. Send `name`, `salePrice`, `costPrice` (both more than 0), optional `stock` and `photo` |
 | PUT | `/shop/products/:id` | Edit a product (only the fields sent) |
 | DELETE | `/shop/products/:id` | Delete a product (its old sales stay in the list) |
-| POST | `/shop/sales` | Sell. Send `productId`, `quantity`, optional `unitPrice`, `buyer`, `note`, `method`, `slipImage` and `amountPaid` (default the total; the buyer name is needed when it is less). Answers the sale with `status`, `balance` and `amountPaid` |
+| POST | `/shop/sales` | Sell. Send `productId`, `quantity`, optional `unitPrice`, `buyer`, `buyerPhone` (10 to 15 digits), `note`, `method`, `slipImage` and `amountPaid` (default the total; the buyer name is needed when it is less). Answers the sale with `status`, `balance` and `amountPaid` |
 | GET | `/shop/sales?month=2026-11` | Sales of one month, newest first (`month=all` for every sale). No slip pictures, only `hasSlip` |
 | GET | `/shop/sales/:id/slip` | The payment slip picture saved with the sale (404 if there is none) |
 | POST | `/shop/sales/:id/pay` | Collect money later. Send `amount` (more than 0, not more than the balance), `method` and optional `slipImage` |
+| POST | `/shop/sales/:id/share` | Makes the receipt code of a sale (the same code is given every time) and answers `{ token }` for the receipt link |
 | GET | `/shop/sales/:id/payments/:paymentId/slip` | The slip picture of one later payment (404 if there is none) |
 | DELETE | `/shop/sales/:id` | Remove a sale: the stock is put back and its payments are removed |
 | POST | `/shop/purchases` | Buy stock. Send `productId`, `quantity`, `unitCost`, optional `supplier`, `note` and `billImage`. Adds the stock, sets the average buying price and makes one Supplements expense |
@@ -276,7 +303,7 @@ Everything needs a login token (sent with every request) except the two open add
 | DELETE | `/shop/purchases/:id` | Remove the newest purchase of a product: stock and buying price go back and the expense is deleted. Refused if the stock is already sold |
 | GET | `/shop/summary?month=2026-11` | Shop earned, profit, cost, stock bought, stock value, items sold, low stock, customers owe (`owed`, `owedCount`) and best sellers |
 
-Without a valid token, these addresses answer `401` with `{"error":"Please log in"}`.
+Without a valid token, the other addresses answer `401` with `{"error":"Please log in"}`.
 
 ## How to run it
 
@@ -326,7 +353,7 @@ node backup.js
 node migrate.js
 ```
 
-`migrate.js` makes the first gym from the old settings and gives every old document its `gymId`. It is safe to run again. The Shop needs no migration: old sales without `amountPaid` count as fully paid.
+`migrate.js` makes the first gym from the old settings and gives every old document its `gymId`. It is safe to run again. The Shop, the buyer phone and the receipt links need no migration: old sales without `amountPaid` count as fully paid, and a receipt code is made only when the owner shares a receipt.
 
 **4. Start the backend**
 
@@ -357,7 +384,7 @@ npm test
 
 The tests use Jest and supertest on the Express app (`app.js`) with an in-memory MongoDB (mongodb-memory-server), so your real database is never touched and the backend does not need to be running. The first run downloads a test database and can take a few minutes.
 
-What is tested (10 suites; all pass on my PC):
+What is tested (12 suites):
 - Login: right and wrong password, unknown username, the 5 wrong tries block, and that every data address answers 401 without a token
 - Sign up: a new gym gets a working token and an empty gym, a taken username, a short password, a bad username or gym name are refused, two new gyms never see each other, and the sign up limit (429)
 - Two-gym isolation: gym B cannot see, edit, delete or undo anything of gym A (members, packages, payments, slips, bills, insights, settings and the payment summary), a `gymId` sent in the body or the address is ignored, an old token without a gym is refused, and two gyms can use the same package name
@@ -369,6 +396,8 @@ What is tested (10 suites; all pass on my PC):
 - Shop (`shop.test.js`): products, selling, stock, summary, two-gym isolation, stock bought, stock value, profit, payment method, slips and receipt
 - Buy stock (`purchase.test.js`): stock and weighted average price, one locked Supplements expense with the bill, bad input, purchase history and bill door, undo rules (newest only, refused when sold), locked expenses, and two-gym isolation
 - Credit sales (`credit.test.js`): Paid, Part paid and Unpaid, buyer name needed, amounts refused, collecting money (slips, over-payment refused), old sales count as fully paid, Customers owe, profit counted on the sale date, removing a sale with payments, and two-gym isolation
+- Buyer phone (`buyerphone.test.js`): saved with the sale and shown in the list, optional, a phone with too few or too many digits is refused and the stock stays, and gym B does not see it
+- Receipt links (`receipts.test.js`): the same code every time, anyone with the code reads the receipt without a login, the answer never has a slip picture, gym id or phone number, a wrong or unknown code gives 404, a login is needed to make a link, gym B cannot make a link for gym A, and shop receipts with later payments
 
 ## Deploy online
 
@@ -379,8 +408,9 @@ What is tested (10 suites; all pass on my PC):
 | Database | MongoDB Atlas | a database user with only readWrite on the app database, a strong password. The free hosts have no fixed IP, so the IP list is 0.0.0.0/0 |
 
 Notes:
-- The Dockerfile runs `npm ci --omit=dev`, so the test tools are not installed online. Always commit `package.json` and `package-lock.json` together, or the online build fails.
-- The website and the backend must be updated together: the landing page, Sign up and the Shop need the new backend. After the new backend is online, run `node migrate.js` once more, because the PC and the online backend share one database.
+- The Dockerfile runs `npm ci --omit=dev`, so the test tools are not installed online. Always commit `package.json` and `package-lock.json` together (in the backend and in the frontend), or the online build fails. The frontend now needs `html2canvas` and `jspdf` for the receipt PDF.
+- The website and the backend must be updated together: the landing page, Sign up, the Shop and the receipt links need the new backend. After the new backend is online, run `node migrate.js` once more, because the PC and the online backend share one database.
+- A receipt link opens only while the backend is awake and the database is reachable. The first tap after a quiet time can take about a minute on the free host. The link is made from the address of the website, so a link made on `localhost` works only on my own computer.
 - The free SnapDeploy backend sleeps after 15 minutes without visitors (the first visit takes about a minute) and has a limited number of deploys and hours (5 deploys per 12 hours, and failed builds count, so read the build log before deploying again). A real gym would need an always-on host.
 - All gyms share the 512 MB of the free Atlas database.
 - The camera needs https, which the online website has.
@@ -408,22 +438,23 @@ Notes:
 - **Stock bought is not a cost until it is sold.** Profit uses the cost of sold items, not the money spent on stock.
 - **Credit sales need no migration.** An old sale has no `amountPaid`, so the code treats it as fully paid. The first payment stays in the sale and later payments go in a `payments` list.
 - **Collecting money is safe against double clicks.** The update matches the old `amountPaid`, so two clicks cannot pay more than the balance.
+- **Reminders never send by themselves.** A WhatsApp link can only open a chat with text, so the app asks the owner and opens one chat at a time. This also avoids pop-up blockers, which stop many tabs opening from one click.
+- **A receipt link uses a random code, not an id.** The code is 16 random bytes (32 hex characters), made only when the owner shares a receipt, and saved on the payment or sale. The same receipt always gets the same code. The open address reads by that code only and sends a trimmed copy: no bank slip picture, no buyer phone, no gym id.
+- **One receipt design everywhere.** The public receipt page reuses the same Slip and ShopSlip screens (with a view-only option), so the receipt looks the same for the owner and for the member.
+- **The PDF is made in the browser.** The receipt on the screen is turned into a PDF with html2canvas and jsPDF, so the server stays small. A phone shares the file with Web Share; where that is not available the PDF is saved and the owner attaches it by hand.
 
 ## Known limits and ideas for later
 
-- The Shop, Buy stock and credit sales are not online yet (the SnapDeploy deploy limit); they need the next deploy
-- Rename "Shop profit" to "Gross profit" (not decided yet)
-- A low-stock warning on the Dashboard
-- A search filter on the Expenses page
-- A buyer phone number so unpaid sales can get a WhatsApp reminder
+- The Shop, Buy stock, credit sales, buyer phone, reminder window and receipt links are not online yet (the SnapDeploy deploy limit); they need the next deploy
 - One owner login for each gym (no staff accounts yet)
 - No "forgot password" (the password can be reset with `node createOwner.js username "newpassword"`)
 - The login and sign up limits are kept in memory and reset when the backend restarts
 - No way yet to delete a whole gym and its data
-- The landing page has a screenshot box and no contact phone yet
-- WhatsApp receipt after a payment (a WhatsApp link can send only text, not a file)
+- The landing page has no contact phone yet
+- Reminders and receipts are sent by the owner with a click, not automatically (fully automatic WhatsApp messages and attached files need the paid WhatsApp Business API)
+- A WhatsApp link can send only text, so the receipt PDF goes through the phone's share sheet, or the owner attaches it by hand on a computer
+- A receipt link never expires and cannot be switched off yet, and it works only while the backend is awake
 - Expenses that repeat every month (rent, internet) filled in by themselves
-- Reminders are sent by the owner with one click (not automatic)
 - Phone numbers that start with 0 are treated as Pakistan numbers (+92) for WhatsApp
 - Pictures are still saved in the database, only smaller (move them to file storage before the free 512 MB fills)
 - Tests do not cover editing members, settings and expenses yet
