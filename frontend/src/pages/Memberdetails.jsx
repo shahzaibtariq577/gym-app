@@ -174,7 +174,11 @@ function MemberDetails({ members, loadMembers }) {
   return (
     <div>
       {slipPayment && (
-        <Slip payment={slipPayment} onClose={() => setSlipPayment(null)} />
+        <Slip
+          payment={slipPayment}
+          phone={member.phone}
+          onClose={() => setSlipPayment(null)}
+        />
       )}
 
       {showPay && (

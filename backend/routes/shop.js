@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Sale = require('../models/Sale');
@@ -476,6 +477,31 @@ router.post('/sales/:id/pay', async (req, res) => {
         .json({ error: 'This sale changed while saving. Please try again.' });
     }
     res.json(shapeSale(updated));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/sales/:id/share', async (req, res) => {
+  try {
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    }).select('shareToken');
+    if (!sale) return res.status(404).json({ error: 'Sale not found' });
+
+    if (!sale.shareToken) {
+      await Sale.updateOne(
+        { _id: sale._id, gymId: req.gymId, shareToken: { $in: [null, ''] } },
+        { shareToken: crypto.randomBytes(16).toString('hex') }
+      );
+    }
+
+    const fresh = await Sale.findOne({
+      _id: sale._id,
+      gymId: req.gymId,
+    }).select('shareToken');
+    res.json({ token: fresh.shareToken });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

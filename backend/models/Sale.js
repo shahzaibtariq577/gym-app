@@ -41,6 +41,7 @@ const saleSchema = new mongoose.Schema(
     payments: { type: [paymentSchema], default: [] },
     buyer: { type: String, default: '', trim: true },
     buyerPhone: { type: String, default: '', trim: true },
+    shareToken: { type: String, index: true },
     note: { type: String, default: '', trim: true },
   },
   { timestamps: true }

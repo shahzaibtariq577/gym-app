@@ -1,6 +1,7 @@
-import { useState, useEffect, useContext } from 'react'
-import { API, formatDate } from './utils'
+import { useState, useEffect, useContext, useRef } from 'react'
+import { API, formatDate, openWhatsApp } from './utils'
 import SettingsContext from './SettingsContext'
+import { sendReceiptPdf, receiptLink, saveReceiptPdf } from './receiptPdf'
 
 const PRINT_CSS = `
 @media print {
@@ -35,12 +36,15 @@ function Row({ label, value, strong }) {
   )
 }
 
-function Slip({ payment, onClose }) {
+function Slip({ payment, phone, publicView, onClose }) {
   const { gymName, gymPhone, gymAddress } = useContext(SettingsContext)
   const [bankSlip, setBankSlip] = useState('')
   const [showBank, setShowBank] = useState(false)
   const [loadingBank, setLoadingBank] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+  const [sharing, setSharing] = useState(false)
+  const receiptRef = useRef(null)
 
   useEffect(() => {
     function onKey(e) {
@@ -76,6 +80,76 @@ function Slip({ payment, onClose }) {
     hour: '2-digit',
     minute: '2-digit',
   })
+
+  const shareUrl = API + '/payments/' + payment._id + '/share'
+
+  function sendPdf() {
+    if (sharing) return
+    setError('')
+    setInfo('')
+    setSharing(true)
+    receiptLink(shareUrl)
+      .then((link) =>
+        sendReceiptPdf(
+          receiptRef.current,
+          'receipt-' + receiptNo + '.pdf',
+          phone,
+          gymName + ' - Payment receipt ' + receiptNo +
+            (link ? '\nReceipt PDF: ' + link : '')
+        )
+      )
+      .then((text) => {
+        setSharing(false)
+        setInfo(text)
+      })
+      .catch(() => {
+        setSharing(false)
+        setError('Error: Could not make the PDF')
+      })
+  }
+
+  function downloadPdf() {
+    if (sharing) return
+    setError('')
+    setInfo('')
+    setSharing(true)
+    saveReceiptPdf(receiptRef.current, 'receipt-' + receiptNo + '.pdf')
+      .then(() => setSharing(false))
+      .catch(() => {
+        setSharing(false)
+        setError('Error: Could not make the PDF')
+      })
+  }
+
+  function buildText(link) {
+    const lines = [
+      gymName + ' - Payment receipt',
+      'Receipt no: ' + receiptNo,
+      'Date paid: ' + formatDate(payment.paidOn),
+      'Member: ' + payment.memberName,
+      'Package: ' + payment.packageName,
+      'Amount paid: Rs ' + payment.amount.toLocaleString(),
+    ]
+    if (hasFee && remaining > 0) {
+      lines.push('Remaining: Rs ' + remaining.toLocaleString())
+    } else if (hasFee) {
+      lines.push('Remaining: Rs 0 (paid in full)')
+    }
+    lines.push('Paid by: ' + (payment.method || 'Cash'))
+    if (payment.newDueDate) {
+      lines.push(
+        (dueMoved || legacyPart ? 'Next due date: ' : 'Due date (not moved yet): ') +
+          formatDate(payment.newDueDate)
+      )
+    }
+    if (link) lines.push('Receipt PDF: ' + link)
+    lines.push('Thank you!')
+    return lines.join('\n')
+  }
+
+  function sendOnWhatsApp() {
+    receiptLink(shareUrl).then((link) => openWhatsApp(phone, buildText(link)))
+  }
 
   function toggleBank() {
     if (showBank) {
@@ -122,6 +196,8 @@ function Slip({ payment, onClose }) {
 
       <div style={{ margin: 'auto', width: 'min(94vw, 400px)' }}>
         <div
+          ref={receiptRef}
+          data-receipt="1"
           className="card slip-print"
           style={{ marginBottom: '12px', color: '#1f2937' }}
         >
@@ -230,6 +306,30 @@ function Slip({ payment, onClose }) {
 
         <div style={{ textAlign: 'center' }}>
           <button onClick={() => window.print()}>🖨️ Print / Save as PDF</button>
+          {publicView ? (
+            <button
+              className="green"
+              disabled={sharing}
+              style={sharing ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              onClick={downloadPdf}
+            >
+              {sharing ? 'Making PDF...' : '📄 Download PDF'}
+            </button>
+          ) : (
+            <>
+              <button
+                className="green"
+                disabled={sharing}
+                style={sharing ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                onClick={sendPdf}
+              >
+                {sharing ? 'Making PDF...' : '📄 Send PDF on WhatsApp'}
+              </button>
+              <button className="grey" onClick={sendOnWhatsApp}>
+                💬 Send as text
+              </button>
+            </>
+          )}
           {payment.hasSlip && (
             <button className="green" onClick={toggleBank}>
               {loadingBank
@@ -239,10 +339,26 @@ function Slip({ payment, onClose }) {
                   : '📎 View bank slip'}
             </button>
           )}
-          <button className="grey" onClick={onClose}>
-            Close
-          </button>
+          {!publicView && (
+            <button className="grey" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
+
+        {info && (
+          <p
+            className="msg-ok"
+            style={{
+              background: 'white',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}
+          >
+            {info}
+          </p>
+        )}
 
         {error && (
           <p

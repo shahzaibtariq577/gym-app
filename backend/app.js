@@ -17,6 +17,7 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '1mb' }));
 
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/receipts', require('./routes/receipts'));
 app.use('/api/members', requireLogin, require('./routes/members'));
 app.use('/api/packages', requireLogin, require('./routes/packages'));
 app.use('/api/payments', requireLogin, require('./routes/payments'));

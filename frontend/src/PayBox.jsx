@@ -268,7 +268,11 @@ function PayBox({ member, onClose, onPaid }) {
       </div>
 
       {showSlip && done && done.payment && (
-        <Slip payment={done.payment} onClose={() => setShowSlip(false)} />
+        <Slip
+          payment={done.payment}
+          phone={member.phone}
+          onClose={() => setShowSlip(false)}
+        />
       )}
     </>
   )

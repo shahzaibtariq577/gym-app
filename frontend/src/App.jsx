@@ -13,6 +13,7 @@ import Landing from './pages/Landing'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
 import Shop from './pages/Shop'
+import ReceiptView from './pages/ReceiptView'
 import SettingsContext from './SettingsContext'
 import { getToken, clearToken } from './auth'
 
@@ -236,11 +237,19 @@ function App() {
 
   return (
     <BrowserRouter>
-      {loggedIn ? (
-        <Layout onLogout={handleLogout} />
-      ) : (
-        <PublicRoutes onLoggedIn={() => setLoggedIn(true)} />
-      )}
+      <Routes>
+        <Route path="/r/:token" element={<ReceiptView />} />
+        <Route
+          path="*"
+          element={
+            loggedIn ? (
+              <Layout onLogout={handleLogout} />
+            ) : (
+              <PublicRoutes onLoggedIn={() => setLoggedIn(true)} />
+            )
+          }
+        />
+      </Routes>
     </BrowserRouter>
   )
 }

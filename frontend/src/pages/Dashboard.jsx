@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import PayBox from '../PayBox'
+import ReminderBox from '../ReminderBox'
 import SettingsContext from '../SettingsContext'
 import {
   API,
@@ -13,12 +14,16 @@ import {
   sendReminder,
 } from '../utils'
 
+let askedThisVisit = false
+
 function Dashboard({ members, loadMembers }) {
   const { gymName, ownerName, ownerPhoto } = useContext(SettingsContext)
   const [showAll, setShowAll] = useState(false)
   const [summary, setSummary] = useState(null)
   const [insights, setInsights] = useState(null)
   const [lowStock, setLowStock] = useState(0)
+  const [askRemind, setAskRemind] = useState(false)
+  const [showRemind, setShowRemind] = useState(false)
   const [bigMember, setBigMember] = useState(null)
   const [payMember, setPayMember] = useState(null)
   const [message, setMessage] = useState('')
@@ -56,6 +61,17 @@ function Dashboard({ members, loadMembers }) {
     loadInsights()
     loadLowStock()
   }, [])
+
+  useEffect(() => {
+    if (askedThisVisit || members.length === 0) return
+    const needReminder = members.filter(
+      (m) => getStatus(daysLeft(m.nextDueDate)) !== 'OK'
+    )
+    if (needReminder.length > 0) {
+      askedThisVisit = true
+      setAskRemind(true)
+    }
+  }, [members])
 
   useEffect(() => {
     function onKey(e) {
@@ -111,6 +127,40 @@ function Dashboard({ members, loadMembers }) {
           onClose={() => setPayMember(null)}
           onPaid={handlePaid}
         />
+      )}
+
+      {askRemind && (
+        <div className="photo-modal" style={{ cursor: 'default' }}>
+          <div
+            className="card"
+            style={{
+              width: 'min(92vw, 380px)',
+              cursor: 'default',
+              marginBottom: 0,
+            }}
+          >
+            <h2>⏰ Send reminders?</h2>
+            <p style={{ margin: '0 0 12px' }}>
+              {urgent.length} {urgent.length === 1 ? 'member is' : 'members are'}{' '}
+              late or due soon. Do you want to remind them on WhatsApp now?
+            </p>
+            <button
+              onClick={() => {
+                setAskRemind(false)
+                setShowRemind(true)
+              }}
+            >
+              💬 Yes, remind
+            </button>
+            <button className="grey" onClick={() => setAskRemind(false)}>
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showRemind && (
+        <ReminderBox members={urgent} onClose={() => setShowRemind(false)} />
       )}
 
       {bigMember && bigMember.photo && (
@@ -341,6 +391,12 @@ function Dashboard({ members, loadMembers }) {
         )}
 
         {urgent.length === 0 && <p>No urgent fees. Everything is fine.</p>}
+
+        {urgent.length > 0 && (
+          <button style={{ marginBottom: '12px' }} onClick={() => setShowRemind(true)}>
+            💬 Remind all ({urgent.length})
+          </button>
+        )}
 
         {shown.length > 0 && (
           <div className="table-wrap">

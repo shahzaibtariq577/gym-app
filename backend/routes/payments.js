@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Member = require('../models/Member');
 
@@ -56,6 +57,33 @@ router.get('/:id/slip', async (req, res) => {
         .json({ error: 'No bank slip saved for this payment' });
     }
     res.json({ slip: payment.slipImage });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/:id/share', async (req, res) => {
+  try {
+    const payment = await Payment.findOne({
+      _id: req.params.id,
+      gymId: req.gymId,
+    }).select('shareToken');
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    if (!payment.shareToken) {
+      await Payment.updateOne(
+        { _id: payment._id, gymId: req.gymId, shareToken: { $in: [null, ''] } },
+        { shareToken: crypto.randomBytes(16).toString('hex') }
+      );
+    }
+
+    const fresh = await Payment.findOne({
+      _id: payment._id,
+      gymId: req.gymId,
+    }).select('shareToken');
+    res.json({ token: fresh.shareToken });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

@@ -1,6 +1,7 @@
-import { useState, useEffect, useContext } from 'react'
-import { API, formatDate } from './utils'
+import { useState, useEffect, useContext, useRef } from 'react'
+import { API, formatDate, openWhatsApp } from './utils'
 import SettingsContext from './SettingsContext'
+import { sendReceiptPdf, receiptLink, saveReceiptPdf } from './receiptPdf'
 
 const PRINT_CSS = `
 @media print {
@@ -39,12 +40,15 @@ function money(number) {
   return 'Rs ' + Number(number).toLocaleString()
 }
 
-function ShopSlip({ sale, onClose }) {
+function ShopSlip({ sale, publicView, onClose }) {
   const { gymName, gymPhone, gymAddress } = useContext(SettingsContext)
   const [images, setImages] = useState({})
   const [shownKey, setShownKey] = useState('')
   const [loadingKey, setLoadingKey] = useState('')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+  const [sharing, setSharing] = useState(false)
+  const receiptRef = useRef(null)
 
   useEffect(() => {
     function onKey(e) {
@@ -86,6 +90,69 @@ function ShopSlip({ sale, onClose }) {
       })
     }
   })
+
+  const shareUrl = API + '/shop/sales/' + sale._id + '/share'
+
+  function sendPdf() {
+    if (sharing) return
+    setError('')
+    setInfo('')
+    setSharing(true)
+    receiptLink(shareUrl)
+      .then((link) =>
+        sendReceiptPdf(
+          receiptRef.current,
+          'receipt-' + receiptNo + '.pdf',
+          sale.buyerPhone,
+          gymName + ' - Sale receipt ' + receiptNo +
+            (link ? '\nReceipt PDF: ' + link : '')
+        )
+      )
+      .then((text) => {
+        setSharing(false)
+        setInfo(text)
+      })
+      .catch(() => {
+        setSharing(false)
+        setError('Error: Could not make the PDF')
+      })
+  }
+
+  function downloadPdf() {
+    if (sharing) return
+    setError('')
+    setInfo('')
+    setSharing(true)
+    saveReceiptPdf(receiptRef.current, 'receipt-' + receiptNo + '.pdf')
+      .then(() => setSharing(false))
+      .catch(() => {
+        setSharing(false)
+        setError('Error: Could not make the PDF')
+      })
+  }
+
+  function buildText(link) {
+    const lines = [
+      gymName + ' - Sale receipt',
+      'Receipt no: ' + receiptNo,
+      'Date: ' + formatDate(sale.soldOn),
+      'Product: ' + sale.quantity + ' x ' + sale.productName,
+      'Total: ' + money(total),
+      'Total paid: ' + money(paid),
+      balance > 0
+        ? 'Remaining: ' + money(balance)
+        : 'Remaining: Rs 0 (paid in full)',
+      'Thank you!',
+    ]
+    if (link) lines.splice(lines.length - 1, 0, 'Receipt PDF: ' + link)
+    return lines.join('\n')
+  }
+
+  function sendOnWhatsApp() {
+    receiptLink(shareUrl).then((link) =>
+      openWhatsApp(sale.buyerPhone, buildText(link))
+    )
+  }
 
   function toggleSlip(item) {
     if (shownKey === item.key) {
@@ -132,6 +199,8 @@ function ShopSlip({ sale, onClose }) {
 
       <div style={{ margin: 'auto', width: 'min(94vw, 400px)' }}>
         <div
+          ref={receiptRef}
+          data-receipt="1"
           className="card slip-print"
           style={{ marginBottom: '12px', color: '#1f2937' }}
         >
@@ -238,6 +307,30 @@ function ShopSlip({ sale, onClose }) {
 
         <div style={{ textAlign: 'center' }}>
           <button onClick={() => window.print()}>🖨️ Print / Save as PDF</button>
+          {publicView ? (
+            <button
+              className="green"
+              disabled={sharing}
+              style={sharing ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              onClick={downloadPdf}
+            >
+              {sharing ? 'Making PDF...' : '📄 Download PDF'}
+            </button>
+          ) : (
+            <>
+              <button
+                className="green"
+                disabled={sharing}
+                style={sharing ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                onClick={sendPdf}
+              >
+                {sharing ? 'Making PDF...' : '📄 Send PDF on WhatsApp'}
+              </button>
+              <button className="grey" onClick={sendOnWhatsApp}>
+                💬 Send as text
+              </button>
+            </>
+          )}
           {slipButtons.map((item) => (
             <button
               key={item.key}
@@ -251,10 +344,26 @@ function ShopSlip({ sale, onClose }) {
                   : '📎 View ' + item.label}
             </button>
           ))}
-          <button className="grey" onClick={onClose}>
-            Close
-          </button>
+          {!publicView && (
+            <button className="grey" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
+
+        {info && (
+          <p
+            className="msg-ok"
+            style={{
+              background: 'white',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}
+          >
+            {info}
+          </p>
+        )}
 
         {error && (
           <p

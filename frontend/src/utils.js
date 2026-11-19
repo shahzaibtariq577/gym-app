@@ -53,7 +53,20 @@ export function amountOwed(m) {
   return m.balance > 0 ? m.balance : m.fee
 }
 
-export function sendReminder(m) {
+export function validPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '')
+  return digits.length >= 10 && digits.length <= 15
+}
+
+export function openWhatsApp(phone, text) {
+  const number = validPhone(phone) ? whatsappNumber(phone) : ''
+  window.open(
+    'https://wa.me/' + number + '?text=' + encodeURIComponent(text),
+    '_blank'
+  )
+}
+
+export function reminderText(m) {
   const days = daysLeft(m.nextDueDate)
   const what =
     m.balance > 0
@@ -77,9 +90,11 @@ export function sendReminder(m) {
       ' left). Please pay on time. Thank you!'
   }
 
-  const url =
-    'https://wa.me/' + whatsappNumber(m.phone) + '?text=' + encodeURIComponent(text)
-  window.open(url, '_blank')
+  return text
+}
+
+export function sendReminder(m) {
+  openWhatsApp(m.phone, reminderText(m))
 }
 
 export function resizePhoto(file) {

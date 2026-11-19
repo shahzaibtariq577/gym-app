@@ -22,6 +22,7 @@ const paymentSchema = new mongoose.Schema(
     balanceAfter: { type: Number, default: 0 },
     slipImage: { type: String, default: '' },
     hasSlip: { type: Boolean, default: false },
+    shareToken: { type: String, index: true },
     paidOn: { type: Date, default: Date.now },
     oldDueDate: { type: Date },
     newDueDate: { type: Date },
