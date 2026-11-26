@@ -463,3 +463,7 @@ Notes:
 ## Author
 
 Shahzaib Tariq, Computer Science graduate from Faisalabad.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
